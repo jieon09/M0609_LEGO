@@ -1,0 +1,145 @@
+{
+  "source": "/home/shin/cobot_ws/src/lego_customer_ui/captures/segments/obj1.jpg",
+  "brick_count": 18,
+  "coverage_pct": 15,
+  "brick_types": {
+    "2x2": 10,
+    "2x3": 2,
+    "3x2": 6
+  },
+  "dropped_cells": 21,
+  "colors": {
+    "R": 0,
+    "B": 18,
+    "Y": 0
+  },
+  "detected_line_color": "B",
+  "bricks": [
+    {
+      "row": 1,
+      "col": 10,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 3,
+      "col": 9,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 5,
+      "col": 7,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 7,
+      "col": 6,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 9,
+      "col": 4,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 11,
+      "col": 2,
+      "width": 2,
+      "height": 3,
+      "color": "B"
+    },
+    {
+      "row": 12,
+      "col": 4,
+      "width": 3,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 12,
+      "col": 7,
+      "width": 3,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 12,
+      "col": 10,
+      "width": 3,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 12,
+      "col": 13,
+      "width": 3,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 12,
+      "col": 21,
+      "width": 3,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 13,
+      "col": 0,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 14,
+      "col": 2,
+      "width": 2,
+      "height": 3,
+      "color": "B"
+    },
+    {
+      "row": 16,
+      "col": 4,
+      "width": 3,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 17,
+      "col": 7,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 18,
+      "col": 9,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 19,
+      "col": 11,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    },
+    {
+      "row": 21,
+      "col": 14,
+      "width": 2,
+      "height": 2,
+      "color": "B"
+    }
+  ]
+}

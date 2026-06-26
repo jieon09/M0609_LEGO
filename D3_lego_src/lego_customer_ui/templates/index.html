@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>레고 조립 로봇</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --lego-red: #e3000b;
+            --lego-yellow: #FFD700;
+            --lego-blue: #006DB7;
+            --lego-green: #00A650;
+            --dark-bg: #0a0a0f;
+            --panel-bg: #12121a;
+            --panel-border: #1e1e2e;
+            --glow-blue: rgba(0, 109, 183, 0.6);
+            --glow-red: rgba(227, 0, 11, 0.5);
+            --text-primary: #e8e8f0;
+            --text-dim: #5a5a7a;
+            --stud-color: #1a1a28;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(ellipse at 20% 50%, rgba(0,109,183,0.07) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(227,0,11,0.07) 0%, transparent 40%);
+        }
+
+        /* LEGO stud pattern background */
+        .stud-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px 16px;
+        }
+
+        /* HEADER */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .logo-block {
+            display: flex;
+            gap: 6px;
+        }
+
+        .lego-stud {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: studPulse 2s ease-in-out infinite;
+        }
+        .lego-stud::before {
+            content: '';
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .lego-stud:nth-child(1) { background: var(--lego-red); animation-delay: 0s; }
+        .lego-stud:nth-child(2) { background: var(--lego-yellow); animation-delay: 0.3s; }
+        .lego-stud:nth-child(3) { background: var(--lego-blue); animation-delay: 0.6s; }
+        .lego-stud:nth-child(4) { background: var(--lego-green); animation-delay: 0.9s; }
+
+        @keyframes studPulse {
+            0%, 100% { transform: translateY(0); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+            50% { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
+        }
+
+        .title-group h1 {
+            font-family: 'Orbitron', monospace;
+            font-size: 2rem;
+            font-weight: 900;
+            letter-spacing: 0.05em;
+            background: linear-gradient(135deg, #fff 0%, var(--lego-yellow) 40%, var(--lego-red) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .title-group .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .status-indicator {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 10px 18px;
+            border-radius: 30px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--lego-green);
+            box-shadow: 0 0 8px var(--lego-green);
+            animation: blink 1.4s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* MAIN LAYOUT */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        /* VIDEO PANEL */
+        .video-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            align-self: start;  /* 비디오 패널은 내용 높이로 고정 — 사이드 패널만 늘어남 */
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            color: var(--lego-blue);
+            text-transform: uppercase;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.65rem;
+            color: var(--lego-red);
+            font-weight: 700;
+            letter-spacing: 0.1em;
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--lego-red);
+            box-shadow: 0 0 6px var(--lego-red);
+            animation: blink 0.8s ease-in-out infinite;
+        }
+
+        .video-wrapper {
+            position: relative;
+            background: #000;
+            aspect-ratio: 4/3;
+            overflow: hidden;
+        }
+
+        .video-feed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Corner brackets overlay */
+        .corner-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .corner {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+        }
+
+        .corner-tl { top: 12px; left: 12px; border-top: 2px solid var(--lego-yellow); border-left: 2px solid var(--lego-yellow); }
+        .corner-tr { top: 12px; right: 12px; border-top: 2px solid var(--lego-yellow); border-right: 2px solid var(--lego-yellow); }
+        .corner-bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--lego-yellow); border-left: 2px solid var(--lego-yellow); }
+        .corner-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--lego-yellow); border-right: 2px solid var(--lego-yellow); }
+
+        .scan-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--lego-blue), transparent);
+            opacity: 0.6;
+            animation: scanDown 3s linear infinite;
+        }
+
+        @keyframes scanDown {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        /* No camera fallback */
+        .no-camera {
+            display: none;
+            position: absolute;
+            inset: 0;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            background: #05050a;
+            color: var(--text-dim);
+        }
+
+        .no-camera .robot-icon {
+            font-size: 4rem;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* VIDEO FOOTER */
+        .video-footer {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-top: 1px solid var(--panel-border);
+        }
+
+        .metric {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .metric-val {
+            color: var(--lego-green);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.68rem;
+        }
+
+        /* SIDE PANEL */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: 100%;  /* main-grid stretch 높이를 상속받아야 last-child flex:1이 효과 있음 */
+        }
+
+        .side-panel .info-card:last-child {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .side-panel .info-card:last-child .log-list {
+            flex: 1;
+            height: auto;
+        }
+
+        .info-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .info-card .panel-header {
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .info-body {
+            padding: 16px;
+        }
+
+        /* Stats */
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 0.8rem;
+        }
+
+        .stat-row:last-child { border-bottom: none; }
+
+        .stat-label { color: var(--text-dim); }
+
+        .stat-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.72rem;
+        }
+
+        .stat-value.green { color: var(--lego-green); }
+        .stat-value.blue { color: #5cc8ff; }
+        .stat-value.yellow { color: var(--lego-yellow); }
+        .stat-value.red { color: var(--lego-red); }
+
+        /* Progress bar */
+        .progress-wrap {
+            padding: 8px 0;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            margin-bottom: 6px;
+        }
+
+        .progress-label span:first-child { color: var(--text-dim); }
+        .progress-label span:last-child {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.68rem;
+            color: var(--lego-yellow);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--lego-blue), var(--lego-yellow));
+            transition: width 0.5s ease;
+        }
+
+        /* Control buttons */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding: 16px;
+        }
+
+        .ctrl-btn {
+            padding: 10px 8px;
+            border: 1px solid var(--panel-border);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-family: 'Orbitron', monospace;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(0,109,183,0.2);
+            border-color: var(--lego-blue);
+            color: #5cc8ff;
+            box-shadow: 0 0 12px rgba(0,109,183,0.3);
+        }
+
+        .ctrl-btn.danger:hover {
+            background: rgba(227,0,11,0.2);
+            border-color: var(--lego-red);
+            color: #ff4455;
+            box-shadow: 0 0 12px rgba(227,0,11,0.3);
+        }
+
+        .ctrl-btn.full {
+            grid-column: span 2;
+            background: linear-gradient(135deg, rgba(0,109,183,0.3), rgba(0,166,80,0.3));
+            border-color: var(--lego-blue);
+            color: #5cc8ff;
+        }
+
+        /* Log */
+        .log-list {
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            height: 200px;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 10px;
+            font-size: 0.7rem;
+            align-items: baseline;
+        }
+
+        .log-time {
+            color: var(--text-dim);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.62rem;
+            flex-shrink: 0;
+        }
+
+        .log-msg { color: var(--text-primary); }
+        .log-msg.ok { color: var(--lego-green); }
+        .log-msg.warn { color: var(--lego-yellow); }
+        .log-msg.err { color: var(--lego-red); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 2px; }
+
+        /* Draw Modal */
+        .draw-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .draw-modal-overlay.active { display: flex; }
+
+        .draw-modal {
+            background: var(--panel-bg);
+            border: 1px solid var(--lego-blue);
+            border-radius: 16px;
+            width: min(480px, 90vw);
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 109, 183, 0.35), 0 0 80px rgba(227, 0, 11, 0.1);
+            animation: modalIn 0.25s ease;
+        }
+
+        @keyframes modalIn {
+            from { transform: scale(0.92) translateY(12px); opacity: 0; }
+            to   { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        .draw-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .draw-modal-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.12em;
+            color: var(--lego-yellow);
+            text-transform: uppercase;
+        }
+
+        .draw-modal-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.3rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+
+        .draw-modal-close:hover { color: var(--lego-red); }
+
+        .draw-modal-body { padding: 20px; }
+
+        .draw-preview-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .draw-preview-thumb {
+            flex-shrink: 0;
+            width: 110px;
+            height: 82px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--panel-border);
+            background: #000;
+        }
+
+        .draw-preview-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .draw-preview-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .draw-preview-label {
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            letter-spacing: 0.05em;
+        }
+
+        .draw-preview-filename {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.62rem;
+            color: var(--lego-green);
+            word-break: break-all;
+        }
+
+        .draw-preview-hint {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        .draw-input-label {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-bottom: 7px;
+            letter-spacing: 0.05em;
+        }
+
+        .draw-customer-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.82rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            margin-bottom: 16px;
+        }
+
+        .draw-customer-input:focus {
+            border-color: var(--lego-blue);
+            box-shadow: 0 0 0 2px rgba(0, 109, 183, 0.2);
+        }
+
+        .draw-customer-input.error {
+            border-color: var(--lego-red);
+            box-shadow: 0 0 0 2px rgba(227, 0, 11, 0.2);
+        }
+
+        .draw-btn-row {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 10px;
+        }
+
+        .draw-btn-cancel {
+            padding: 11px 8px;
+            border: 1px solid rgba(227, 0, 11, 0.4);
+            background: rgba(227, 0, 11, 0.08);
+            color: #ff5566;
+            border-radius: 8px;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.05em;
+        }
+
+        .draw-btn-cancel:hover {
+            background: rgba(227, 0, 11, 0.2);
+            border-color: var(--lego-red);
+        }
+
+        .draw-btn-start {
+            padding: 11px 8px;
+            border: 1px solid var(--lego-yellow);
+            background: linear-gradient(135deg, rgba(227, 0, 11, 0.3), rgba(255, 215, 0, 0.3));
+            color: var(--lego-yellow);
+            border-radius: 8px;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.05em;
+        }
+
+        .draw-btn-start:hover {
+            background: linear-gradient(135deg, rgba(227, 0, 11, 0.5), rgba(255, 215, 0, 0.5));
+            box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
+        }
+
+        /* Task Status Panel */
+        .task-list {
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            height: 380px;
+            overflow-y: auto;
+        }
+
+        .task-row {
+            display: grid;
+            grid-template-columns: 68px 1fr auto;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            border-radius: 7px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid transparent;
+            font-size: 0.68rem;
+            transition: border-color 0.2s;
+        }
+
+        .task-row.status-running {
+            border-color: rgba(255,215,0,0.25);
+            background: rgba(255,215,0,0.05);
+        }
+
+        .task-row.status-done {
+            border-color: rgba(0,166,80,0.2);
+        }
+
+        .task-row.status-failed {
+            border-color: rgba(227,0,11,0.2);
+        }
+
+        .task-customer {
+            color: var(--text-primary);
+            font-family: 'Orbitron', monospace;
+            font-size: 0.60rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .task-time {
+            color: var(--text-dim);
+            font-size: 0.60rem;
+            font-family: 'Orbitron', monospace;
+            white-space: nowrap;
+        }
+
+        .task-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 7px;
+            border-radius: 10px;
+            font-size: 0.58rem;
+            font-family: 'Orbitron', monospace;
+            letter-spacing: 0.05em;
+            white-space: nowrap;
+        }
+
+        .badge-start   { background: rgba(0,109,183,0.2);  color: #5cc8ff; }
+        .badge-pending { background: rgba(255,255,255,0.07); color: var(--text-dim); }
+        .badge-running { background: rgba(255,215,0,0.18); color: var(--lego-yellow); }
+        .badge-done    { background: rgba(0,166,80,0.18);  color: var(--lego-green); }
+        .badge-failed  { background: rgba(227,0,11,0.18);  color: #ff5566; }
+
+        .badge-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .badge-running .badge-dot {
+            background: var(--lego-yellow);
+            animation: blink 0.8s ease-in-out infinite;
+        }
+
+        .badge-done    .badge-dot { background: var(--lego-green); }
+        .badge-failed  .badge-dot { background: #ff5566; }
+        .badge-start   .badge-dot { background: #5cc8ff; }
+        .badge-pending .badge-dot { background: var(--text-dim); }
+
+        .task-empty {
+            padding: 16px 8px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.7rem;
+        }
+
+        /* Object Selection Modal */
+        .obj-sel-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            background: rgba(0,0,0,0.82);
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+        }
+        .obj-sel-overlay.active { display: flex; }
+
+        .obj-sel-modal {
+            background: var(--panel-bg);
+            border: 1px solid var(--lego-yellow);
+            border-radius: 16px;
+            width: min(860px, 94vw);
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 50px rgba(255,215,0,0.2), 0 0 100px rgba(0,109,183,0.15);
+            animation: modalIn 0.25s ease;
+        }
+
+        .obj-sel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--panel-border);
+            background: rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+
+        .obj-sel-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.12em;
+            color: var(--lego-yellow);
+            text-transform: uppercase;
+        }
+
+        .obj-sel-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .obj-sel-hint {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+        }
+        .obj-sel-hint strong { color: var(--lego-yellow); }
+
+        .obj-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .obj-tile {
+            border: 2px solid var(--panel-border);
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.18s;
+            background: rgba(255,255,255,0.02);
+            position: relative;
+        }
+
+        .obj-tile:hover {
+            border-color: var(--lego-blue);
+            box-shadow: 0 0 12px rgba(0,109,183,0.35);
+        }
+
+        .obj-tile.selected {
+            border-color: var(--lego-green);
+            box-shadow: 0 0 16px rgba(0,166,80,0.5);
+            background: rgba(0,166,80,0.08);
+        }
+
+        .obj-tile img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            display: block;
+        }
+
+        .obj-tile-label {
+            padding: 6px 8px;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.62rem;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .obj-tile.selected .obj-tile-label { color: var(--lego-green); }
+
+        .obj-check {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid var(--text-dim);
+            flex-shrink: 0;
+            transition: all 0.18s;
+        }
+
+        .obj-tile.selected .obj-check {
+            background: var(--lego-green);
+            border-color: var(--lego-green);
+        }
+
+        .obj-sel-footer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 20px;
+            border-top: 1px solid var(--panel-border);
+            background: rgba(0,0,0,0.15);
+            flex-shrink: 0;
+        }
+
+        .obj-sel-count {
+            flex: 1;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+        .obj-sel-count strong { color: var(--lego-yellow); font-family: 'Orbitron', monospace; }
+
+        .obj-sel-all-btn {
+            padding: 8px 14px;
+            border: 1px solid var(--panel-border);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-dim);
+            border-radius: 7px;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.62rem;
+            cursor: pointer;
+            transition: all 0.18s;
+            letter-spacing: 0.05em;
+        }
+        .obj-sel-all-btn:hover { border-color: var(--lego-blue); color: #5cc8ff; }
+
+        .obj-sel-confirm-btn {
+            padding: 9px 22px;
+            border: 1px solid var(--lego-yellow);
+            background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(0,166,80,0.2));
+            color: var(--lego-yellow);
+            border-radius: 8px;
+            font-family: 'Orbitron', monospace;
+            font-size: 0.68rem;
+            cursor: pointer;
+            transition: all 0.18s;
+            letter-spacing: 0.05em;
+        }
+        .obj-sel-confirm-btn:hover {
+            background: linear-gradient(135deg, rgba(255,215,0,0.4), rgba(0,166,80,0.4));
+            box-shadow: 0 0 14px rgba(255,215,0,0.3);
+        }
+        .obj-sel-confirm-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- Object Selection Modal -->
+    <div class="obj-sel-overlay" id="objSelModal">
+        <div class="obj-sel-modal">
+            <div class="obj-sel-header">
+                <span class="obj-sel-title">🧩 그릴 객체 선택</span>
+            </div>
+            <div class="obj-sel-body">
+                <p class="obj-sel-hint">
+                    이미지에서 <strong id="objSelTotal">0</strong>개의 그림이 감지되었습니다.<br>
+                    레고로 변환할 그림을 <strong>하나</strong> 선택하세요.
+                </p>
+                <div class="obj-grid" id="objGrid"></div>
+            </div>
+            <div class="obj-sel-footer">
+                <span class="obj-sel-count"><strong id="objSelCountText">선택 없음</strong></span>
+                <button class="obj-sel-confirm-btn" id="objSelConfirmBtn"
+                        onclick="objSelConfirm()" disabled>✔ 변환 시작</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Draw Modal -->
+    <div class="draw-modal-overlay" id="drawModal">
+        <div class="draw-modal">
+            <div class="draw-modal-header">
+                <span class="draw-modal-title">🎨 그림 그리기 요청</span>
+                <button class="draw-modal-close" onclick="dismissDraw()">×</button>
+            </div>
+            <div class="draw-modal-body">
+                <div class="draw-preview-row">
+                    <div class="draw-preview-thumb">
+                        <img id="drawPreviewImg" src="" alt="캡처 이미지">
+                    </div>
+                    <div class="draw-preview-info">
+                        <span class="draw-preview-label">저장된 이미지</span>
+                        <span class="draw-preview-filename" id="drawFilename"></span>
+                        <span class="draw-preview-hint">고객 ID를 입력하고<br>그림 그리기를 시작하세요.</span>
+                    </div>
+                </div>
+                <label class="draw-input-label" for="customerIdInput">고객 ID</label>
+                <input class="draw-customer-input" id="customerIdInput"
+                       type="text" placeholder="예: CUST-001"
+                       oninput="localStorage.setItem('lastCustomerId', this.value.trim())"
+                       onkeydown="if(event.key==='Enter') startDraw()">
+                <div class="draw-btn-row">
+                    <button class="draw-btn-cancel" onclick="dismissDraw()">✕ 취소</button>
+                    <button class="draw-btn-start" onclick="startDraw()">🎨 주문등록하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 시작 화면 -->
+    <div id="startScreen" style="
+        position:fixed;inset:0;z-index:9000;
+        background:var(--dark-bg);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;
+        background-image:
+            radial-gradient(ellipse at 20% 50%, rgba(0,109,183,0.12) 0%, transparent 55%),
+            radial-gradient(ellipse at 80% 20%, rgba(227,0,11,0.12) 0%, transparent 45%),
+            radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
+        background-size:auto,auto,40px 40px;">
+
+        <!-- 로고 블록 -->
+        <div style="display:flex;gap:10px;margin-bottom:8px;">
+            <div style="width:48px;height:48px;border-radius:8px;background:var(--lego-red);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(227,0,11,0.5);animation:studPulse 2s ease-in-out infinite 0s;">
+                <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.3);"></div>
+            </div>
+            <div style="width:48px;height:48px;border-radius:8px;background:var(--lego-yellow);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(255,215,0,0.4);animation:studPulse 2s ease-in-out infinite 0.3s;">
+                <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.3);"></div>
+            </div>
+            <div style="width:48px;height:48px;border-radius:8px;background:var(--lego-blue);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,109,183,0.5);animation:studPulse 2s ease-in-out infinite 0.6s;">
+                <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.3);"></div>
+            </div>
+            <div style="width:48px;height:48px;border-radius:8px;background:var(--lego-green);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,166,80,0.4);animation:studPulse 2s ease-in-out infinite 0.9s;">
+                <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.3);"></div>
+            </div>
+        </div>
+
+        <!-- 타이틀 -->
+        <div style="text-align:center;">
+            <h1 style="font-family:'Orbitron',monospace;font-size:3.2rem;font-weight:900;letter-spacing:0.06em;
+                background:linear-gradient(135deg,#fff 0%,var(--lego-yellow) 40%,var(--lego-red) 100%);
+                -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+                margin-bottom:12px;">
+                레고 조립 로봇
+            </h1>
+            <p style="font-size:0.85rem;color:var(--text-dim);letter-spacing:0.25em;text-transform:uppercase;">
+                LEGO Assembly Robot System v2.0
+            </p>
+        </div>
+
+        <!-- 안내 문구 -->
+        <div style="text-align:center;max-width:400px;">
+            <p style="font-size:0.9rem;color:rgba(255,255,255,0.5);line-height:1.8;">
+                그림을 그려서 레고로 변환해보세요.<br>
+                카메라가 자동으로 그림을 인식합니다.
+            </p>
+        </div>
+
+        <!-- 시작 버튼 -->
+        <button onclick="startSystem()" style="
+            padding:18px 60px;
+            font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;
+            letter-spacing:0.15em;text-transform:uppercase;
+            background:linear-gradient(135deg,rgba(227,0,11,0.4),rgba(0,109,183,0.4));
+            border:2px solid var(--lego-yellow);
+            color:var(--lego-yellow);
+            border-radius:50px;
+            cursor:pointer;
+            transition:all 0.25s;
+            box-shadow:0 0 30px rgba(255,215,0,0.2),0 0 60px rgba(0,109,183,0.1);
+            " onmouseover="this.style.boxShadow='0 0 40px rgba(255,215,0,0.5),0 0 80px rgba(0,109,183,0.2)';this.style.transform='scale(1.04)';"
+              onmouseout="this.style.boxShadow='0 0 30px rgba(255,215,0,0.2),0 0 60px rgba(0,109,183,0.1)';this.style.transform='scale(1)';">
+            ▶&nbsp;&nbsp;시작하기
+        </button>
+
+        <p style="font-size:0.65rem;color:var(--text-dim);letter-spacing:0.1em;">
+            시작하기를 누르면 카메라가 활성화됩니다
+        </p>
+    </div>
+
+    <script>
+        // 진행 중 task가 있으면 시작 화면을 렌더 직후 즉시 숨김 — 깜빡임 방지
+        // (실제 startSystem 호출은 모든 함수 정의 후 스크립트 하단에서 수행)
+        if (localStorage.getItem('activeTaskId')) {
+            document.getElementById('startScreen').style.display = 'none';
+        }
+    </script>
+
+    <div class="stud-bg"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo-block">
+                <div class="lego-stud"></div>
+                <div class="lego-stud"></div>
+                <div class="lego-stud"></div>
+                <div class="lego-stud"></div>
+            </div>
+            <div class="title-group">
+                <h1>레고 조립 로봇</h1>
+                <p class="subtitle">LEGO Assembly Robot System v2.0</p>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span style="font-size:0.75rem;">시스템 활성</span>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <!-- VIDEO FEED -->
+            <div class="video-panel">
+                <div class="panel-header">
+                    <span class="panel-title">📷 카메라 피드 — CAM-01</span>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="display:flex;border:1px solid var(--panel-border);border-radius:6px;overflow:hidden;font-family:'Orbitron',monospace;font-size:0.62rem;">
+                            <button id="btnNormal" onclick="setFeedMode('normal')"
+                                style="padding:4px 10px;border:none;cursor:pointer;background:var(--lego-blue);color:#fff;transition:all 0.2s;">
+                                RGB
+                            </button>
+                            <button id="btnHsv" onclick="setFeedMode('hsv')"
+                                style="padding:4px 10px;border:none;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text-dim);transition:all 0.2s;">
+                                HSV
+                            </button>
+                            <button id="btnDbg" onclick="setFeedMode('dbg')"
+                                style="padding:4px 10px;border:none;cursor:pointer;background:rgba(255,255,255,0.05);color:var(--text-dim);transition:all 0.2s;">
+                                DBG
+                            </button>
+                        </div>
+                        <div class="live-badge">
+                            <div class="live-dot"></div>
+                            LIVE
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-wrapper">
+                    <img class="video-feed" id="videoFeed"
+                         src=""
+                         alt="웹캠 피드"
+                         onerror="handleFeedError()">
+
+                    <div class="corner-overlay">
+                        <div class="corner corner-tl"></div>
+                        <div class="corner corner-tr"></div>
+                        <div class="corner corner-bl"></div>
+                        <div class="corner corner-br"></div>
+                        <div class="scan-line"></div>
+                    </div>
+
+                    <div class="no-camera" id="noCam">
+                        <div class="robot-icon">🤖</div>
+                        <p style="font-size:0.9rem;">카메라를 찾을 수 없습니다</p>
+                        <p style="font-size:0.75rem; color:#3a3a5a;">웹캠을 연결하고 새로고침 하세요</p>
+                    </div>
+                </div>
+
+                <div class="video-footer">
+                    <div class="metric">📐 해상도: <span class="metric-val">640×480</span></div>
+                    <div class="metric">⚡ FPS: <span class="metric-val" id="fpsVal">--</span></div>
+                    <div class="metric">🕐 <span class="metric-val" id="clock">--:--:--</span></div>
+                </div>
+            </div>
+
+            <!-- SIDE PANEL -->
+            <div class="side-panel">
+
+                <!-- Inventory -->
+                <div class="info-card">
+                    <div class="panel-header">
+                        <span class="panel-title">🧱 재고 현황</span>
+                        <span id="invLastUpdate" style="font-size:0.58rem;color:var(--text-dim);font-family:'Orbitron',monospace;">--:--:--</span>
+                    </div>
+                    <div class="info-body" style="padding:10px 12px;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.67rem;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;color:var(--text-dim);padding:3px 2px;font-weight:400;width:54px;"></th>
+                                    <th style="text-align:center;color:var(--text-dim);padding:3px 2px;font-weight:400;">1×1</th>
+                                    <th style="text-align:center;color:var(--text-dim);padding:3px 2px;font-weight:400;">1×2</th>
+                                    <th style="text-align:center;color:var(--text-dim);padding:3px 2px;font-weight:400;">2×2</th>
+                                    <th style="text-align:center;color:var(--text-dim);padding:3px 2px;font-weight:400;">2×4</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Auto-Save Detection Status -->
+                <div class="info-card">
+                    <div class="panel-header">
+                        <span class="panel-title">📸 자동 저장</span>
+                        <span id="detectBadge" style="font-size:0.62rem;padding:2px 9px;border-radius:10px;background:rgba(255,255,255,0.05);color:var(--text-dim);font-family:'Orbitron',monospace;letter-spacing:0.05em;">대기 중</span>
+                    </div>
+                    <div class="info-body">
+                        <div class="stat-row">
+                            <span class="stat-label">감지 상태</span>
+                            <span class="stat-value" id="detectStatusText" style="color:var(--text-dim)">대기 중</span>
+                        </div>
+                        <div class="progress-wrap">
+                            <div class="progress-label">
+                                <span>감지 지속 시간</span>
+                                <span id="detectTimeLabel" style="color:var(--lego-yellow)">0.0 / 5.0초</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="detectProgressFill" style="width:0%"></div>
+                            </div>
+                        </div>
+                        <div class="stat-row" id="autoSavedRow" style="display:none">
+                            <span class="stat-label">마지막 저장</span>
+                            <span class="stat-value green" id="autoSavedName"
+                                  style="font-size:0.6rem;word-break:break-all;text-align:right;max-width:150px;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Status -->
+                <div class="info-card">
+                    <div class="panel-header">
+                        <span class="panel-title">⚙️ 작업 진행 현황</span>
+                        <span id="taskLastUpdate" style="font-size:0.58rem;color:var(--text-dim);font-family:'Orbitron',monospace;">--:--:--</span>
+                    </div>
+                    <div class="task-list" id="taskList">
+                        <div class="task-empty">데이터 로딩 중...</div>
+                    </div>
+                </div>
+
+                <!-- Log -->
+                <div class="info-card">
+                    <div class="panel-header">
+                        <span class="panel-title">📋 시스템 로그</span>
+                    </div>
+                    <div class="log-list" id="logList">
+                        <div class="log-entry">
+                            <span class="log-time">00:00:00</span>
+                            <span class="log-msg ok">시스템 초기화 완료</span>
+                        </div>
+                        <div class="log-entry">
+                            <span class="log-time">00:00:01</span>
+                            <span class="log-msg ok">카메라 연결 중...</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Feed mode toggle (RGB / HSV / DBG)
+        function setFeedMode(mode) {
+            const feed = document.getElementById('videoFeed');
+            const btns = {
+                normal: document.getElementById('btnNormal'),
+                hsv:    document.getElementById('btnHsv'),
+                dbg:    document.getElementById('btnDbg'),
+            };
+            const srcs = {
+                normal: '/video_feed',
+                hsv:    '/video_feed_hsv',
+                dbg:    '/video_feed_debug',
+            };
+            const activeColors = {
+                normal: { bg: 'var(--lego-blue)',   color: '#fff' },
+                hsv:    { bg: 'var(--lego-yellow)',  color: '#000' },
+                dbg:    { bg: 'var(--lego-red)',     color: '#fff' },
+            };
+            feed.src = srcs[mode];
+            Object.entries(btns).forEach(([key, btn]) => {
+                if (key === mode) {
+                    btn.style.background = activeColors[mode].bg;
+                    btn.style.color      = activeColors[mode].color;
+                } else {
+                    btn.style.background = 'rgba(255,255,255,0.05)';
+                    btn.style.color      = 'var(--text-dim)';
+                }
+            });
+        }
+
+        // Clock update
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent =
+                now.toLocaleTimeString('ko-KR', { hour12: false });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // FPS counter
+        let fpsCounter = 0;
+        let lastFpsUpdate = Date.now();
+        const videoFeed = document.getElementById('videoFeed');
+
+        videoFeed.addEventListener('load', () => {
+            fpsCounter++;
+            const now = Date.now();
+            if (now - lastFpsUpdate >= 1000) {
+                document.getElementById('fpsVal').textContent = fpsCounter;
+                fpsCounter = 0;
+                lastFpsUpdate = now;
+            }
+        });
+
+        // Error handler
+        function handleFeedError() {
+            if (!videoFeed.src || videoFeed.src === window.location.href) return;
+            document.getElementById('noCam').style.display = 'flex';
+            videoFeed.style.display = 'none';
+            addLog('카메라 연결 실패', 'err');
+
+            // 카메라 없으면 자동 저장 감지 폴링 중단 + UI 초기화
+            if (_detectInterval) {
+                clearInterval(_detectInterval);
+                _detectInterval = null;
+            }
+            document.getElementById('detectBadge').textContent      = '카메라 없음';
+            document.getElementById('detectBadge').style.color      = 'var(--lego-red)';
+            document.getElementById('detectBadge').style.background = 'rgba(227,0,11,0.15)';
+            document.getElementById('detectStatusText').textContent  = '카메라 연결 필요';
+            document.getElementById('detectStatusText').style.color  = 'var(--lego-red)';
+        }
+
+        // Log
+        function addLog(msg, type = '') {
+            const list = document.getElementById('logList');
+            const time = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg ${type}">${msg}</span>`;
+            list.appendChild(entry);
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function capture() {
+            addLog('캡처 요청 중...', '');
+            fetch('/capture', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.ok) {
+                        addLog(`저장 완료: ${data.filename}`, 'ok');
+                        addLog(data.message, 'ok');
+                    } else {
+                        addLog(`캡처 실패: ${data.message}`, 'err');
+                    }
+                })
+                .catch(() => addLog('서버 연결 오류', 'err'));
+        }
+
+
+        // ── 시작하기 버튼 ────────────────────────────────────────────────────
+        function startSystem() {
+            // 시작 화면 페이드아웃 후 제거 — 자동 복구 경로에서는 인라인 스크립트가 미리 숨겨둠
+            const screen = document.getElementById('startScreen');
+            if (screen) {
+                screen.style.transition = 'opacity 0.5s ease';
+                screen.style.opacity    = '0';
+                setTimeout(() => screen.remove(), 500);
+            }
+
+            // dismiss_draw는 진행 중 task 복구 여부와 무관하게 항상 호출 — 잔여 pending 캡처/그림 상태만 정리
+            fetch('/dismiss_draw', { method: 'POST' }).finally(() => {
+                fetch('/detection_status')
+                    .then(r => r.json())
+                    .then(data => {
+                        // 현재 서버에 남아있는 pending_draw_file을 기준점으로 설정
+                        // → 이미 있는 파일은 무시하고 새로 감지된 것만 모달로 띄움
+                        _knownPendingDraw = data.pending_draw_file || null;
+                    })
+                    .catch(() => {})
+                    .finally(() => _startPolling());
+            });
+
+            // 이전 페이지 이탈 시 진행 중이던 task가 있으면 시뮬레이션 복구 — 없으면 카메라 시작
+            const savedTaskId = localStorage.getItem('activeTaskId');
+            if (savedTaskId) {
+                fetch(`/build_status/${savedTaskId}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.ok && !data.is_done) {
+                            addLog(`진행 중 작업 복구 — 작업 ID: ${savedTaskId.slice(0, 8).toUpperCase()}`, 'ok');
+                            stopVideoFeed(savedTaskId);
+                        } else {
+                            localStorage.removeItem('activeTaskId');
+                            _startCameraFeed();
+                        }
+                    })
+                    .catch(() => {
+                        localStorage.removeItem('activeTaskId');
+                        _startCameraFeed();
+                    });
+            } else {
+                _startCameraFeed();
+            }
+        }
+
+        function _startCameraFeed() {
+            document.getElementById('videoFeed').src = '/video_feed';
+            addLog('시스템 시작 — 카메라 연결 중...', 'ok');
+            setTimeout(() => addLog('카메라 스트림 연결됨', 'ok'), 800);
+        }
+
+        let _detectInterval = null;
+
+        function _startPolling() {
+            pollInventory();
+            setInterval(pollInventory, 3000);
+
+            pollDetectionStatus();
+            _detectInterval = setInterval(pollDetectionStatus, 500);
+
+            pollTaskStatus();
+            setInterval(pollTaskStatus, 2000);
+
+            setInterval(pollObjectSelection, 800);
+        }
+
+        // ── Inventory polling ──────────────────────────────────────────────
+        const INV_COLOR_CSS  = { red:'#e3000b', blue:'#006DB7', yellow:'#FFD700' };
+        const INV_COLOR_NAME = { red:'빨강', blue:'파랑', yellow:'노랑' };
+        const INV_SIZES      = ['1x1', '1x2', '2x2', '2x4'];
+        const INV_COLORS     = ['red', 'blue', 'yellow'];
+
+        function pollInventory() {
+            fetch('/inventory')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.ok) return;
+                    const lookup = {};
+                    data.inventory.forEach(item => { lookup[item.color + '_' + item.size] = item; });
+
+                    const tbody = document.getElementById('invBody');
+                    tbody.innerHTML = '';
+                    INV_COLORS.forEach(color => {
+                        const tr = document.createElement('tr');
+                        const tdLabel = document.createElement('td');
+                        tdLabel.style.cssText = 'padding:4px 2px;';
+                        tdLabel.innerHTML = `<div style="display:flex;align-items:center;gap:4px;">
+                            <div style="width:8px;height:8px;border-radius:2px;flex-shrink:0;background:${INV_COLOR_CSS[color]};"></div>
+                            <span style="color:var(--text-dim);font-size:0.63rem;">${INV_COLOR_NAME[color]}</span>
+                        </div>`;
+                        tr.appendChild(tdLabel);
+
+                        INV_SIZES.forEach(size => {
+                            const item = lookup[color + '_' + size] || { quantity: 0, low: true };
+                            const td = document.createElement('td');
+                            td.style.cssText = 'text-align:center;padding:4px 2px;font-family:Orbitron,monospace;font-size:0.65rem;';
+                            td.style.color = item.low ? 'var(--lego-red)' : 'var(--lego-green)';
+                            td.textContent = item.quantity;
+                            tr.appendChild(td);
+                        });
+                        tbody.appendChild(tr);
+                    });
+
+                    document.getElementById('invLastUpdate').textContent =
+                        new Date().toLocaleTimeString('ko-KR', { hour12: false });
+                })
+                .catch(() => {});
+        }
+
+        // ── Auto-detection status polling ──────────────────────────────────
+        let _knownLastSaved  = null;
+        let _knownPendingDraw = null;
+
+        function pollDetectionStatus() {
+            fetch('/detection_status')
+                .then(r => r.json())
+                .then(data => {
+                    const statusText  = document.getElementById('detectStatusText');
+                    const badge       = document.getElementById('detectBadge');
+                    const fill        = document.getElementById('detectProgressFill');
+                    const timeLabel   = document.getElementById('detectTimeLabel');
+                    const savedRow    = document.getElementById('autoSavedRow');
+                    const savedName   = document.getElementById('autoSavedName');
+
+                    if (data.cooldown) {
+                        statusText.textContent = '캡처 완료 — ID 입력 대기 중';
+                        statusText.style.color = 'var(--lego-yellow)';
+                        badge.textContent      = '입력 대기';
+                        badge.style.color      = 'var(--lego-yellow)';
+                        badge.style.background = 'rgba(255,215,0,0.15)';
+                        fill.style.width       = '100%';
+                        fill.style.background  = 'var(--lego-green)';
+                        timeLabel.textContent  = '-';
+                    } else if (data.is_detecting) {
+                        const pct = Math.min((data.elapsed / 5.0) * 100, 100);
+                        statusText.textContent = `감지 중 — ${data.remaining}초 후 저장`;
+                        statusText.style.color = 'var(--lego-yellow)';
+                        badge.textContent      = '감지 중';
+                        badge.style.color      = 'var(--lego-yellow)';
+                        badge.style.background = 'rgba(255,215,0,0.15)';
+                        fill.style.width       = pct + '%';
+                        fill.style.background  = 'linear-gradient(90deg,var(--lego-yellow),var(--lego-green))';
+                        timeLabel.textContent  = `${data.elapsed} / 5.0초`;
+                    } else {
+                        statusText.textContent = '대기 중';
+                        statusText.style.color = 'var(--text-dim)';
+                        badge.textContent      = '대기 중';
+                        badge.style.color      = 'var(--text-dim)';
+                        badge.style.background = 'rgba(255,255,255,0.05)';
+                        fill.style.width       = '0%';
+                        fill.style.background  = 'linear-gradient(90deg,var(--lego-blue),var(--lego-yellow))';
+                        timeLabel.textContent  = '0.0 / 5.0초';
+                    }
+
+                    if (data.last_auto_saved) {
+                        savedRow.style.display = 'flex';
+                        savedName.textContent  = data.last_auto_saved;
+                        if (data.last_auto_saved !== _knownLastSaved) {
+                            _knownLastSaved = data.last_auto_saved;
+                            addLog(`자동 저장 완료: ${data.last_auto_saved}`, 'ok');
+                        }
+                    }
+
+                    // 새 pending draw 파일이 생기면 모달 표시
+                    if (data.pending_draw_file && data.pending_draw_file !== _knownPendingDraw) {
+                        _knownPendingDraw = data.pending_draw_file;
+                        showDrawModal(data.pending_draw_file);
+                    }
+                })
+                .catch(() => {});
+        }
+
+        // ── Task Status polling ───────────────────────────────────────────
+        const TASK_STATUS_LABEL = {
+            start:   ['START',   'badge-start'],
+            pending: ['PENDING', 'badge-pending'],
+            running: ['RUNNING', 'badge-running'],
+            done:    ['DONE',    'badge-done'],
+            failed:  ['FAILED',  'badge-failed'],
+        };
+
+        function pollTaskStatus() {
+            fetch('/task_status')
+                .then(r => r.json())
+                .then(data => {
+                    const list = document.getElementById('taskList');
+                    if (!data.ok || data.tasks.length === 0) {
+                        list.innerHTML = '<div class="task-empty">등록된 작업 없음</div>';
+                        return;
+                    }
+                    list.innerHTML = '';
+                    data.tasks.forEach(t => {
+                        const [label, badgeClass] = TASK_STATUS_LABEL[t.status] || [t.status, 'badge-pending'];
+                        const row = document.createElement('div');
+                        row.className = `task-row status-${t.status}`;
+                        row.innerHTML = `
+                            <span class="task-customer" title="${t.customer_id}">${t.customer_id}</span>
+                            <span class="task-badge ${badgeClass}">
+                                <span class="badge-dot"></span>${label}
+                            </span>
+                            <span class="task-time">${t.created_at}</span>`;
+                        list.appendChild(row);
+                    });
+                    document.getElementById('taskLastUpdate').textContent =
+                        new Date().toLocaleTimeString('ko-KR', { hour12: false });
+                })
+                .catch(() => {});
+        }
+
+        // ── Object Selection Modal ─────────────────────────────────────────
+        let _objSelActive   = false;
+        let _objSelCount    = 0;
+        let _objSelSelected = -1;  // -1 = 미선택, 0 이상 = 선택된 인덱스
+
+        function pollObjectSelection() {
+            if (_objSelActive) return;
+            fetch('/object_selection_status')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.pending && !_objSelActive) {
+                        _objSelActive = true;
+                        showObjSelModal(data.count);
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function showObjSelModal(count) {
+            _objSelCount    = count;
+            _objSelSelected = -1;
+
+            document.getElementById('objSelTotal').textContent = count;
+            updateObjSelCount();
+
+            const grid = document.getElementById('objGrid');
+            grid.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'obj-tile';
+                tile.dataset.idx = i;
+                tile.onclick = () => objSelToggle(i);
+                tile.innerHTML = `
+                    <img src="/object_preview/${i}?t=${Date.now()}" alt="obj${i+1}"
+                         onerror="this.style.background='#1a1a28';this.alt='로드 실패'">
+                    <div class="obj-tile-label">
+                        <span>OBJ ${i+1}</span>
+                        <div class="obj-check"></div>
+                    </div>`;
+                grid.appendChild(tile);
+            }
+
+            addLog(`${count}개 객체 감지 — 선택 창을 확인하세요`, 'warn');
+            document.getElementById('objSelModal').classList.add('active');
+        }
+
+        function objSelToggle(idx) {
+            // 이미 선택된 항목을 다시 누르면 해제, 다른 항목을 누르면 단독 선택
+            _objSelSelected = (_objSelSelected === idx) ? -1 : idx;
+            document.querySelectorAll('.obj-tile').forEach(tile => {
+                tile.classList.toggle('selected', parseInt(tile.dataset.idx) === _objSelSelected);
+            });
+            updateObjSelCount();
+        }
+
+        function updateObjSelCount() {
+            const selected = _objSelSelected >= 0;
+            document.getElementById('objSelCountText').textContent =
+                selected ? `OBJ ${_objSelSelected + 1} 선택됨` : '선택 없음';
+            document.getElementById('objSelConfirmBtn').disabled = !selected;
+        }
+
+        function objSelConfirm() {
+            if (_objSelSelected < 0) return;
+            const idx = _objSelSelected;
+            document.getElementById('objSelModal').classList.remove('active');
+            _objSelActive = false;
+            addLog(`선택 완료: OBJ ${idx + 1} 변환 중...`, 'ok');
+            fetch('/confirm_object_selection', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ selected_indices: [idx] }),
+            }).catch(() => {});
+        }
+
+        // ── Draw Modal ──────────────────────────────────────────────────────
+        let _currentDrawFile = null;
+
+        function showDrawModal(filename) {
+            _currentDrawFile = filename;
+            document.getElementById('drawFilename').textContent  = '저장 대기 중...';
+            document.getElementById('drawPreviewImg').src        = '/pending_preview?t=' + Date.now();
+            const savedId = localStorage.getItem('lastCustomerId') || '';
+            const input = document.getElementById('customerIdInput');
+            input.value = savedId;
+            input.classList.remove('error');
+            document.getElementById('drawModal').classList.add('active');
+            setTimeout(() => { input.focus(); if (savedId) input.select(); }, 150);
+        }
+
+        function dismissDraw() {
+            document.getElementById('drawModal').classList.remove('active');
+            _currentDrawFile  = null;
+            _knownPendingDraw = null;
+            fetch('/dismiss_draw', { method: 'POST' }).catch(() => {});
+        }
+
+        function stopVideoFeed(taskId) {
+            const feed = document.getElementById('videoFeed');
+            feed.src = '';
+            feed.style.display = 'none';
+
+            const wrapper = document.querySelector('.video-wrapper');
+            const noCam   = document.getElementById('noCam');
+            noCam.style.cssText = 'display:flex;flex-direction:column;position:absolute;inset:0;padding:0;gap:0;background:#05050a;';
+            noCam.innerHTML = `
+                <canvas id="buildCanvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+                <div style="position:absolute;top:12px;left:0;right:0;text-align:center;pointer-events:none;">
+                    <span style="font-size:0.72rem;color:rgba(255,255,255,0.4);font-family:Orbitron,monospace;letter-spacing:0.1em;">레고 변환 처리 중...</span>
+                </div>
+                <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 16px 10px;background:linear-gradient(transparent,rgba(0,0,0,0.8));">
+                    <p id="buildProgress" style="font-size:0.68rem;color:#5a5a7a;font-family:Orbitron,monospace;text-align:center;margin-bottom:5px;">브릭 데이터 대기 중...</p>
+                    <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;">
+                        <div id="buildProgressFill" style="height:100%;width:0%;border-radius:2px;background:linear-gradient(90deg,#006DB7,#FFD700);transition:width 0.4s ease;"></div>
+                    </div>
+                </div>`;
+
+            // 캔버스를 래퍼 실제 픽셀 크기로 설정 — CSS 100%와 별도로 해상도 지정 필요
+            const canvas = document.getElementById('buildCanvas');
+            canvas.width  = wrapper.offsetWidth;
+            canvas.height = wrapper.offsetHeight;
+
+            if (taskId) startBuildMonitor(taskId);
+        }
+
+        // ── 라이브 빌드 모니터 ─────────────────────────────────────────────
+        const BUILD_COLORS = { R: '#e3000b', B: '#006DB7', Y: '#FFD700' };
+        let _buildInterval = null;
+
+        function startBuildMonitor(taskId) {
+            if (_buildInterval) clearInterval(_buildInterval);
+            _buildInterval = setInterval(() => pollBuildStatus(taskId), 1500);
+            pollBuildStatus(taskId);
+        }
+
+        function pollBuildStatus(taskId) {
+            fetch(`/build_status/${taskId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.ok) {
+                        // task가 DB에서 사라진 경우 — 더 폴링하지 않고 localStorage 정리
+                        clearInterval(_buildInterval);
+                        if (localStorage.getItem('activeTaskId') === taskId) {
+                            localStorage.removeItem('activeTaskId');
+                        }
+                        return;
+                    }
+                    drawBuildCanvas(data.bricks || [], data.placed_count || 0);
+
+                    const total  = data.total_count || (data.bricks || []).length;
+                    const placed = data.placed_count || 0;
+                    const pct    = total > 0 ? Math.round(placed / total * 100) : 0;
+
+                    const prog = document.getElementById('buildProgress');
+                    const fill = document.getElementById('buildProgressFill');
+                    if (prog) {
+                        prog.textContent = total > 0
+                            ? `브릭 ${placed} / ${total} 배치 완료 (${pct}%)`
+                            : '브릭 변환 중...';
+                    }
+                    if (fill) fill.style.width = pct + '%';
+
+                    if (data.is_done) {
+                        clearInterval(_buildInterval);
+                        if (localStorage.getItem('activeTaskId') === taskId) {
+                            localStorage.removeItem('activeTaskId');
+                        }
+                        if (prog) { prog.textContent = `✔ 조립 완료 — 총 ${total}개 브릭`; prog.style.color = '#00A650'; }
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function drawBuildCanvas(bricks, placedCount) {
+            const canvas = document.getElementById('buildCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const W = canvas.width;
+            const H = canvas.height;
+
+            // 24×24 그리드를 캔버스에 꽉 채우되 셀은 정사각형 유지 → 짧은 쪽 기준
+            const CELL = Math.floor(Math.min(W, H) / 24);
+            const gridSize = CELL * 24;
+            const offX = Math.floor((W - gridSize) / 2);
+            const offY = Math.floor((H - gridSize) / 2);
+
+            ctx.fillStyle = '#05050a';
+            ctx.fillRect(0, 0, W, H);
+
+            // 그리드 선
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth   = 1;
+            for (let i = 0; i <= 24; i++) {
+                ctx.beginPath(); ctx.moveTo(offX + i * CELL, offY);            ctx.lineTo(offX + i * CELL, offY + gridSize); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(offX,            offY + i * CELL); ctx.lineTo(offX + gridSize, offY + i * CELL); ctx.stroke();
+            }
+
+            bricks.forEach((b, idx) => {
+                const x = offX + b.col    * CELL;
+                const y = offY + b.row    * CELL;
+                const w = b.width  * CELL - 1;
+                const h = b.height * CELL - 1;
+
+                if (idx < placedCount) {
+                    const base = BUILD_COLORS[b.color] || '#888888';
+                    ctx.fillStyle = base;
+                    ctx.fillRect(x, y, w, h);
+                    // 상단 하이라이트
+                    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+                    ctx.fillRect(x, y, w, Math.max(2, CELL * 0.12));
+                    // 스터드
+                    const studR = Math.max(1.5, CELL * 0.22);
+                    for (let sc = 0; sc < b.width; sc++) {
+                        for (let sr = 0; sr < b.height; sr++) {
+                            ctx.beginPath();
+                            ctx.arc(x + sc * CELL + CELL / 2, y + sr * CELL + CELL / 2, studR, 0, Math.PI * 2);
+                            ctx.fillStyle = 'rgba(255,255,255,0.22)';
+                            ctx.fill();
+                        }
+                    }
+                } else {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+                    ctx.lineWidth   = 1;
+                    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+                    const base = BUILD_COLORS[b.color] || '#444';
+                    ctx.fillStyle = base + '18';
+                    ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
+                }
+            });
+        }
+
+        function startDraw() {
+            const input      = document.getElementById('customerIdInput');
+            const customerId = input.value.trim();
+            if (!customerId) {
+                input.classList.add('error');
+                setTimeout(() => input.classList.remove('error'), 1500);
+                input.focus();
+                return;
+            }
+            document.getElementById('drawModal').classList.remove('active');
+            _currentDrawFile  = null;
+            _knownPendingDraw = null;
+
+            fetch('/start_draw', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ customer_id: customerId }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok) {
+                    addLog(`이미지 저장: ${data.filename}`, 'ok');
+                    addLog(`주문 등록 완료 — 고객: ${customerId}  작업 ID: ${data.task_id}`, 'ok');
+                    // 페이지 재진입 시 시뮬레이션 복구용 — pollBuildStatus가 is_done 또는 task 미존재 시 제거
+                    localStorage.setItem('activeTaskId', data.task_id);
+                    stopVideoFeed(data.task_id);
+                } else {
+                    addLog(`주문 등록 실패: ${data.message}`, 'err');
+                }
+            })
+            .catch(() => addLog('서버 연결 오류', 'err'));
+        }
+
+        // 자동 복구: localStorage에 진행 중 task가 있으면 시작 화면 건너뛰고 곧바로 startSystem 실행
+        // startSystem 내부에서 build_status 검증 후 살아있으면 시뮬레이션 복구, 아니면 카메라 모드로 전환
+        if (localStorage.getItem('activeTaskId')) {
+            startSystem();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>관리자 UI — Robot Controller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── CSS Variables ─────────────────────────────────────────── */
+:root {
+  --bg:        #080c14;
+  --panel:     #0d1520;
+  --border:    #0f2840;
+  --accent:    #00d4ff;
+  --accent2:   #00ff9d;
+  --warn:      #ff9f00;
+  --danger:    #ff3b5c;
+  --text:      #c8e0f0;
+  --text-dim:  #4a6a80;
+  --mono:      'Share Tech Mono', monospace;
+  --sans:      'Exo 2', sans-serif;
+  --glow:      0 0 12px rgba(0,212,255,.45);
+  --glow2:     0 0 12px rgba(0,255,157,.45);
+}
+
+/* ── Reset / Base ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow-x: hidden;
+}
+
+/* scanline overlay */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,.07) 3px,
+    rgba(0,0,0,.07) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, #0a1825 0%, #0d1c2e 100%);
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  animation: headerLine 3s ease-in-out infinite;
+}
+@keyframes headerLine {
+  0%,100% { opacity: .4; } 50% { opacity: 1; }
+}
+.logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  display: grid; place-items: center;
+  font-size: 18px;
+  box-shadow: var(--glow);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { box-shadow: var(--glow); }
+  50% { box-shadow: 0 0 24px rgba(0,212,255,.8); }
+}
+.logo-text { font-weight: 700; font-size: 1.1rem; letter-spacing: .15em; }
+.logo-text span { color: var(--accent); }
+
+.header-right { display: flex; align-items: center; gap: 20px; }
+#status-badge {
+  font-family: var(--mono);
+  font-size: .78rem;
+  padding: 5px 14px;
+  border-radius: 3px;
+  background: rgba(0,212,255,.08);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  letter-spacing: .08em;
+  transition: all .3s;
+}
+#status-badge.busy {
+  border-color: var(--warn);
+  color: var(--warn);
+  background: rgba(255,159,0,.1);
+  box-shadow: 0 0 10px rgba(255,159,0,.4);
+}
+.clock {
+  font-family: var(--mono);
+  font-size: .85rem;
+  color: var(--text-dim);
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ── Main Layout ───────────────────────────────────────────── */
+main {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  grid-template-rows: 1fr;
+  gap: 16px;
+  padding: 16px;
+  height: calc(100vh - 65px);
+}
+
+/* ── Panel Base ────────────────────────────────────────────── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.panel::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: .5;
+}
+.panel-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,.2);
+}
+.panel-header .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--glow);
+  animation: blink 1.5s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.panel-title {
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.panel-body { flex: 1; padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Joint Cards ───────────────────────────────────────────── */
+.joint-card {
+  background: rgba(0,0,0,.25);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.joint-label {
+  font-size: .65rem;
+  letter-spacing: .2em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.joint-value-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.joint-value {
+  font-family: var(--mono);
+  font-size: 1.35rem;
+  color: var(--accent2);
+  text-shadow: var(--glow2);
+  transition: color .2s;
+}
+.joint-unit { font-size: .65rem; color: var(--text-dim); margin-left: 2px; }
+.joint-bar-wrap {
+  margin-top: 7px;
+  background: rgba(0,0,0,.4);
+  border-radius: 2px;
+  height: 4px;
+  overflow: hidden;
+}
+.joint-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 2px;
+  transition: width .3s ease;
+  box-shadow: 0 0 6px rgba(0,212,255,.5);
+}
+
+/* ── TCP Cards ─────────────────────────────────────────────── */
+.tcp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.tcp-card {
+  background: rgba(0,0,0,.25);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.tcp-label {
+  font-size: .6rem;
+  letter-spacing: .2em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.tcp-value {
+  font-family: var(--mono);
+  font-size: 1.1rem;
+  color: var(--warn);
+  text-shadow: 0 0 8px rgba(255,159,0,.4);
+  transition: color .2s;
+}
+.tcp-unit { font-size: .6rem; color: var(--text-dim); }
+
+/* ── Filter dropdowns ──────────────────────────────────────── */
+.filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.filter-select {
+  width: 100%;
+  padding: 7px 10px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: .78rem;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2300d4ff' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+.filter-select option { background: #0d1520; color: var(--text); }
+
+/* ── Detection list (read-only) ────────────────────────────── */
+.det-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 90px;
+  overflow-y: auto;
+}
+.det-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,.25);
+  font-size: .74rem;
+}
+.det-item.match {
+  border-color: var(--accent2);
+  background: rgba(0,255,157,.07);
+}
+.det-color-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.det-shape { font-family: var(--mono); color: var(--accent); font-size: .72rem; }
+.det-conf { margin-left: auto; font-family: var(--mono); font-size: .68rem; color: var(--text-dim); }
+.det-empty { font-size: .72rem; color: var(--text-dim); text-align: center; padding: 8px 0; }
+
+/* ── Match count badge ─────────────────────────────────────── */
+.match-badge {
+  font-family: var(--mono);
+  font-size: .72rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(0,255,157,.08);
+  border: 1px solid var(--accent2);
+  color: var(--accent2);
+  text-align: center;
+}
+.match-badge.zero { background: rgba(255,59,92,.08); border-color: var(--danger); color: var(--danger); }
+
+/* YOLO 토글 버튼 */
+.btn-yolo {
+  background: linear-gradient(135deg, #0d2200, #1a4400);
+  color: #66ff66;
+  border: 1px solid #44cc44;
+  box-shadow: inset 0 0 10px rgba(68,204,68,.1), 0 0 8px rgba(68,204,68,.2);
+}
+.btn-yolo:hover:not(:disabled) {
+  box-shadow: inset 0 0 15px rgba(68,204,68,.2), 0 0 16px rgba(68,204,68,.5);
+}
+.btn-yolo.yolo-off {
+  background: linear-gradient(135deg, #220000, #440000);
+  color: #ff6666;
+  border-color: #cc4444;
+  box-shadow: inset 0 0 10px rgba(204,68,68,.1);
+}
+
+/* ── Safety Mode ───────────────────────────────────────────── */
+.safety-panel {
+  margin-top: 12px;
+  background: rgba(0,0,0,.25);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.safety-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.safety-title {
+  font-size: .65rem;
+  letter-spacing: .2em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.btn-safety {
+  background: linear-gradient(135deg, #002a1a, #004d30);
+  color: #00ff9d;
+  border: 1px solid #00cc7a;
+  box-shadow: inset 0 0 10px rgba(0,204,122,.1), 0 0 8px rgba(0,204,122,.2);
+  padding: 4px 12px;
+  font-size: .7rem;
+}
+.btn-safety:hover:not(:disabled) {
+  box-shadow: inset 0 0 15px rgba(0,204,122,.2), 0 0 16px rgba(0,204,122,.5);
+}
+.btn-safety.safety-on {
+  background: linear-gradient(135deg, #2a1800, #4d2e00);
+  color: #ff9f00;
+  border-color: #cc7a00;
+  box-shadow: inset 0 0 10px rgba(204,122,0,.15), 0 0 10px rgba(255,159,0,.4);
+  animation: safetyPulse 1.8s ease-in-out infinite;
+}
+@keyframes safetyPulse {
+  0%,100% { box-shadow: inset 0 0 10px rgba(204,122,0,.15), 0 0 8px rgba(255,159,0,.3); }
+  50%     { box-shadow: inset 0 0 18px rgba(204,122,0,.3),  0 0 20px rgba(255,159,0,.7); }
+}
+.safety-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,.3);
+  transition: all .4s;
+}
+.safety-indicator.normal {
+  border-color: #00cc7a;
+  background: rgba(0,204,122,.06);
+}
+.safety-indicator.safe-on {
+  border-color: #ff9f00;
+  background: rgba(255,159,0,.07);
+}
+.safety-led {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #00cc7a;
+  box-shadow: 0 0 6px rgba(0,204,122,.6);
+  transition: all .4s;
+}
+.safety-indicator.safe-on .safety-led {
+  background: #ff9f00;
+  box-shadow: 0 0 8px rgba(255,159,0,.8);
+  animation: ledBlink .9s ease-in-out infinite;
+}
+@keyframes ledBlink {
+  0%,100% { opacity: 1; } 50% { opacity: .3; }
+}
+.safety-mode-label {
+  font-family: var(--mono);
+  font-size: .78rem;
+  color: #00cc7a;
+  transition: color .4s;
+}
+.safety-indicator.safe-on .safety-mode-label {
+  color: #ff9f00;
+}
+.safety-mode-sub {
+  font-size: .6rem;
+  color: var(--text-dim);
+  margin-left: auto;
+  letter-spacing: .08em;
+}
+
+/* ── Place Params ──────────────────────────────────────────── */
+.place-params {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.param-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.param-field label {
+  font-size: .6rem;
+  letter-spacing: .18em;
+  color: var(--accent2);
+  text-transform: uppercase;
+  text-align: center;
+}
+.param-field input[type=number] {
+  width: 100%;
+  padding: 5px 6px;
+  background: rgba(0,0,0,.4);
+  border: 1px solid var(--accent2);
+  border-radius: 5px;
+  color: var(--accent2);
+  font-family: var(--mono);
+  font-size: .85rem;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.param-field input[type=number]::-webkit-inner-spin-button,
+.param-field input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.param-field input[type=number]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 6px rgba(0,212,255,.4);
+}
+
+/* ── Action Buttons ────────────────────────────────────────── */
+.action-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.action-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+.action-buttons .btn {
+  flex: 1;
+}
+.action-title {
+  font-size: .65rem;
+  letter-spacing: .2em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  text-align: center;
+}
+.btn {
+  position: relative;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all .25s;
+  text-transform: uppercase;
+}
+.btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,.06);
+  transform: translateX(-100%);
+  transition: transform .3s;
+}
+.btn:hover::before { transform: translateX(0); }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn:disabled::before { display: none; }
+
+.btn-pick {
+  background: linear-gradient(135deg, #003d52, #006680);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  box-shadow: inset 0 0 15px rgba(0,212,255,.1), var(--glow);
+}
+.btn-pick:hover:not(:disabled) {
+  box-shadow: inset 0 0 20px rgba(0,212,255,.2), 0 0 20px rgba(0,212,255,.5);
+}
+.btn-place {
+  background: linear-gradient(135deg, #1a3300, #2d5500);
+  color: var(--accent2);
+  border: 1px solid var(--accent2);
+  box-shadow: inset 0 0 15px rgba(0,255,157,.1), var(--glow2);
+}
+.btn-place:hover:not(:disabled) {
+  box-shadow: inset 0 0 20px rgba(0,255,157,.2), 0 0 20px rgba(0,255,157,.5);
+}
+.btn-home {
+  background: linear-gradient(135deg, #1a1a3d, #2d2d6b);
+  color: #a78bfa;
+  border: 1px solid #a78bfa;
+  box-shadow: inset 0 0 15px rgba(167,139,250,.1), 0 0 12px rgba(167,139,250,.3);
+}
+.btn-home:hover:not(:disabled) {
+  box-shadow: inset 0 0 20px rgba(167,139,250,.2), 0 0 20px rgba(167,139,250,.5);
+}
+.btn-block-pick {
+  background: linear-gradient(135deg, #3d1a00, #7a3300);
+  color: #ffaa44;
+  border: 1px solid #ffaa44;
+  box-shadow: inset 0 0 15px rgba(255,170,68,.1), 0 0 12px rgba(255,170,68,.3);
+}
+.btn-block-pick:hover:not(:disabled) {
+  box-shadow: inset 0 0 20px rgba(255,170,68,.2), 0 0 20px rgba(255,170,68,.5);
+}
+.btn-cancel {
+  background: linear-gradient(135deg, #3d0008, #7a0015);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  box-shadow: inset 0 0 15px rgba(255,59,92,.1), 0 0 12px rgba(255,59,92,.3);
+}
+.btn-cancel:hover:not(:disabled) {
+  box-shadow: inset 0 0 20px rgba(255,59,92,.2), 0 0 20px rgba(255,59,92,.6);
+}
+
+.btn-inner { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.btn-icon { font-size: .9rem; }
+
+/* progress bar inside button */
+.btn-progress {
+  position: absolute; bottom: 0; left: 0; height: 3px;
+  background: currentColor;
+  width: 0%;
+  transition: width 3s linear;
+  opacity: .6;
+}
+
+/* ── Camera Feed ───────────────────────────────────────────── */
+.camera-panel {
+  display: flex; flex-direction: column;
+}
+.camera-body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.camera-frame {
+  flex: 1;
+  position: relative;
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  min-height: 160px;
+}
+.camera-frame img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* Corner decorations */
+.corner { position: absolute; width: 18px; height: 18px; }
+.corner-tl { top: 6px; left: 6px;  border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+.corner-tr { top: 6px; right: 6px; border-top: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+.corner-bl { bottom: 6px; left: 6px;  border-bottom: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+.corner-br { bottom: 6px; right: 6px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+
+.camera-overlay {
+  position: absolute; bottom: 10px; left: 10px;
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: .7rem; color: var(--accent2);
+}
+.rec-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #f00;
+  animation: blink .8s ease-in-out infinite;
+}
+
+/* ── Mini Stats Bar ─────────────────────────────────────────── */
+.mini-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.mini-stat {
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 10px;
+  text-align: center;
+}
+.mini-stat-label { font-size: .58rem; color: var(--text-dim); letter-spacing: .15em; text-transform: uppercase; }
+.mini-stat-val { font-family: var(--mono); font-size: .95rem; color: var(--accent); margin-top: 2px; }
+
+/* ── Log Panel ──────────────────────────────────────────────── */
+.log-panel {
+  font-family: var(--mono);
+  font-size: .7rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  max-height: 70px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  background: rgba(0,0,0,.3);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+.log-entry { margin-bottom: 2px; }
+.log-entry span { color: var(--accent2); }
+.log-entry.warn span { color: var(--warn); }
+.log-entry.info span { color: var(--accent); }
+
+/* ── Stats Panel ────────────────────────────────────────────── */
+.stats-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.stats-title {
+  font-size: .65rem;
+  letter-spacing: .2em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.stat-label {
+  font-size: .68rem;
+  color: var(--text);
+  letter-spacing: .05em;
+}
+.stat-value {
+  font-family: var(--mono);
+  font-size: .85rem;
+  font-weight: 600;
+}
+.stat-bar-wrap {
+  height: 6px;
+  background: rgba(0,0,0,.4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.stat-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .6s ease;
+  position: relative;
+}
+.stat-bar::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 60%, rgba(255,255,255,.15));
+}
+.stat-bar.success { background: linear-gradient(90deg, #00cc7a, #00ff9d); box-shadow: 0 0 6px rgba(0,255,157,.4); }
+.stat-bar.danger  { background: linear-gradient(90deg, #cc2200, #ff3b5c); box-shadow: 0 0 6px rgba(255,59,92,.4); }
+.stat-bar.progress-bar { background: linear-gradient(90deg, #0080cc, #00d4ff); box-shadow: 0 0 6px rgba(0,212,255,.4); }
+.stat-value.success { color: var(--accent2); text-shadow: var(--glow2); }
+.stat-value.danger  { color: var(--danger);  text-shadow: 0 0 8px rgba(255,59,92,.5); }
+.stat-value.progress-val { color: var(--accent); text-shadow: var(--glow); }
+.stat-sub {
+  font-size: .6rem;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+/* ── Inventory Panel ────────────────────────────────────────── */
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.inv-cell {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 6px 6px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transition: background .3s, border-color .3s;
+}
+.inv-cell.flash {
+  background: rgba(0,212,255,0.12);
+  border-color: rgba(0,212,255,0.45);
+}
+.inv-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .58rem;
+  letter-spacing: .05em;
+  color: var(--text-dim);
+}
+.inv-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+.inv-shape {
+  font-family: var(--mono);
+  font-size: .56rem;
+  color: var(--text-dim);
+}
+.inv-count {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.inv-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.inv-total-label {
+  font-size: .65rem;
+  color: var(--text-dim);
+  letter-spacing: .1em;
+}
+.inv-total-val {
+  font-family: var(--mono);
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: var(--glow);
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,.2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ HEADER ═══════════════════════════ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🤖</div>
+    <div>
+      <div class="logo-text"><span>ROBOT</span> ADMIN UI</div>
+      <div style="font-size:.65rem;letter-spacing:.12em;color:var(--text-dim)">INDUSTRIAL ARM CONTROLLER v2.4</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge">대기 중</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<!-- ═══════════════════════ MAIN ════════════════════════════ -->
+<main>
+
+  <!-- ── LEFT: Joints (상단) + TCP (하단) ────────────────── -->
+  <div style="display:flex;flex-direction:column;gap:16px;min-height:0">
+
+    <!-- Joints -->
+    <aside class="panel" style="flex:1.2;min-height:0">
+      <div class="panel-header">
+        <div class="dot"></div>
+        <div class="panel-title">Joint Angles</div>
+      </div>
+      <div class="panel-body" id="joint-panel">
+        <!-- generated by JS -->
+      </div>
+    </aside>
+
+    <!-- TCP Position -->
+    <aside class="panel" style="flex:1;min-height:0">
+      <div class="panel-header">
+        <div class="dot" style="background:var(--warn);box-shadow:0 0 10px rgba(255,159,0,.6);"></div>
+        <div class="panel-title" style="color:var(--warn)">TCP Position</div>
+      </div>
+      <div class="panel-body">
+        <div style="font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);text-transform:uppercase;padding:4px 0 2px">
+          Translation (mm)
+        </div>
+        <div class="tcp-grid" id="tcp-trans"></div>
+        <div style="font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);text-transform:uppercase;padding:10px 0 2px">
+          Rotation (°)
+        </div>
+        <div class="tcp-grid" id="tcp-rot"></div>
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ── CENTER: Camera + Actions ────────────────────────── -->
+  <section class="panel camera-panel">
+    <div class="panel-header">
+      <div class="dot" style="background:var(--danger);box-shadow:0 0 10px rgba(255,59,92,.6);"></div>
+      <div class="panel-title" style="color:var(--danger)">Robot Camera Feed</div>
+    </div>
+    <div class="camera-body">
+      <!-- Live Feed -->
+      <div class="camera-frame">
+        <img src="/video_feed" alt="Robot Camera" id="cam-img"/>
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-tr"></div>
+        <div class="corner corner-bl"></div>
+        <div class="corner corner-br"></div>
+        <div class="camera-overlay">
+          <div class="rec-dot"></div>
+          LIVE · ROBOT CAM 01
+        </div>
+      </div>
+
+      <!-- Mini stats -->
+      <div class="mini-stats">
+        <div class="mini-stat">
+          <div class="mini-stat-label">FPS</div>
+          <div class="mini-stat-val" id="fps-val">30</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-label">Latency</div>
+          <div class="mini-stat-val" id="lat-val">12ms</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-label">Uptime</div>
+          <div class="mini-stat-val" id="uptime-val">00:00</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-section">
+      <!-- YOLO 토글 -->
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="action-title">블럭 탐지</div>
+        <button class="btn btn-yolo yolo-off" id="btn-yolo" onclick="toggleYolo()" style="padding:4px 12px;font-size:.7rem;">
+          YOLO OFF
+        </button>
+      </div>
+
+      <!-- 탐지된 블럭 목록 (읽기 전용) -->
+      <div class="det-list" id="det-list">
+        <div class="det-empty">YOLO를 켜면 탐지된 블럭이 표시됩니다</div>
+      </div>
+
+      <!-- 필터 조건 -->
+      <div class="action-title" style="margin-top:2px">집기 조건</div>
+      <div class="filter-row">
+        <select class="filter-select" id="filter-color" onchange="updateMatchBadge()">
+          <option value="all">색상: 전체</option>
+          <option value="red">빨강</option>
+          <option value="blue">파랑</option>
+          <option value="yellow">노랑</option>
+          <option value="green">초록</option>
+          <option value="white">흰색</option>
+          <option value="black">검정</option>
+          <option value="orange">주황</option>
+        </select>
+        <select class="filter-select" id="filter-shape" onchange="updateMatchBadge()">
+          <option value="all">모양: 전체</option>
+          <option value="2x2">2x2 (정사각)</option>
+          <option value="2x3">2x3 (직사각)</option>
+        </select>
+      </div>
+
+      <!-- 매칭 블럭 수 표시 -->
+      <div class="match-badge zero" id="match-badge">조건에 맞는 블럭: 0개</div>
+
+      <!-- 블럭 놓기 좌표 입력 -->
+      <div class="action-title" style="margin-top:4px">블럭 놓기 좌표</div>
+      <div class="place-params">
+        <div class="param-field">
+          <label>ROW</label>
+          <input type="number" id="param-row" value="0" min="0" max="23">
+        </div>
+        <div class="param-field">
+          <label>COL</label>
+          <input type="number" id="param-col" value="0" min="0" max="23">
+        </div>
+        <div class="param-field">
+          <label>WIDTH</label>
+          <input type="number" id="param-width" value="2" min="1" max="4">
+        </div>
+        <div class="param-field">
+          <label>HEIGHT</label>
+          <input type="number" id="param-height" value="3" min="1" max="4">
+        </div>
+      </div>
+
+      <!-- 동작 버튼 -->
+      <div class="action-buttons" style="margin-top:2px">
+        <button class="btn btn-block-pick" id="btn-block-pick" onclick="doBlockPick()">
+          <div class="btn-inner">
+            <span class="btn-icon">📦</span> 블럭 놓기
+          </div>
+          <div class="btn-progress" id="prog-block-pick"></div>
+        </button>
+        <button class="btn btn-pick" id="btn-pick" onclick="doAction('pick')">
+          <div class="btn-inner">
+            <span class="btn-icon">✊</span> 블럭 집기
+          </div>
+          <div class="btn-progress" id="prog-pick"></div>
+        </button>
+        <button class="btn btn-home" id="btn-home" onclick="doGoHome()">
+          <div class="btn-inner">
+            <span class="btn-icon">🏠</span> 홈으로
+          </div>
+          <div class="btn-progress" id="prog-home"></div>
+        </button>
+        <button class="btn btn-cancel" id="btn-cancel" onclick="doCancel()">
+          <div class="btn-inner">
+            <span class="btn-icon">✖</span> 중지하기
+          </div>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── RIGHT: Robot Mode ──────────────────────────────────── -->
+  <aside class="panel">
+    <div class="panel-header">
+      <div class="dot" style="background:#00cc7a;box-shadow:0 0 10px rgba(0,204,122,.6);"></div>
+      <div class="panel-title" style="color:#00cc7a">Robot Mode</div>
+    </div>
+    <div class="panel-body">
+      <div class="safety-panel" style="margin-top:0">
+        <div class="safety-header">
+          <div class="safety-title">🛡 안전 모드</div>
+          <button class="btn btn-safety" id="btn-safety" onclick="toggleSafety()">
+            NORMAL
+          </button>
+        </div>
+        <div class="safety-indicator normal" id="safety-indicator">
+          <div class="safety-led" id="safety-led"></div>
+          <div style="flex:1;">
+            <div class="safety-mode-label" id="safety-mode-label">정상 연결</div>
+            <div style="font-size:.6rem;color:var(--text-dim);margin-top:2px" id="safety-mode-desc">로봇이 정상 동작 중입니다</div>
+          </div>
+          <div class="safety-mode-sub" id="safety-mode-sub">NORMAL</div>
+        </div>
+
+        <!-- 하드웨어 상태 표시 -->
+        <div id="hw-state-row" style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+             background:rgba(255,255,255,0.03);border-radius:8px;margin-top:8px;border:1px solid rgba(255,255,255,0.06);">
+          <div id="hw-state-led" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;
+               background:#5a5a7a;box-shadow:none;transition:all 0.4s;"></div>
+          <div style="flex:1;">
+            <div style="font-size:0.68rem;color:var(--text-dim);">하드웨어 상태</div>
+            <div id="hw-state-label" style="font-size:0.72rem;color:var(--text-primary);font-family:'Orbitron',monospace;margin-top:2px;">수신 대기 중...</div>
+          </div>
+          <button id="btn-recovery" onclick="doRecovery()"
+            style="display:none;padding:5px 12px;font-size:0.62rem;font-family:'Orbitron',monospace;
+                   letter-spacing:0.05em;background:rgba(255,200,0,0.15);border:1px solid #ffc800;
+                   color:#ffc800;border-radius:6px;cursor:pointer;transition:all 0.2s;"
+            onmouseover="this.style.background='rgba(255,200,0,0.3)'"
+            onmouseout="this.style.background='rgba(255,200,0,0.15)'">
+            복구
+          </button>
+        </div>
+
+        <!-- 작업 통계 -->
+        <div class="stats-section">
+          <div class="stats-title">📊 작업 통계</div>
+
+          <!-- 집기 성공률 -->
+          <div class="stat-item">
+            <div class="stat-row">
+              <span class="stat-label">✊ 집기 성공률</span>
+              <span class="stat-value success" id="stat-pick-val">—</span>
+            </div>
+            <div class="stat-bar-wrap">
+              <div class="stat-bar success" id="stat-pick-bar" style="width:0%"></div>
+            </div>
+            <div class="stat-sub" id="stat-pick-sub">데이터 없음</div>
+          </div>
+
+          <!-- 두기 성공률 -->
+          <div class="stat-item">
+            <div class="stat-row">
+              <span class="stat-label">📦 두기 성공률</span>
+              <span class="stat-value success" id="stat-place-val">—</span>
+            </div>
+            <div class="stat-bar-wrap">
+              <div class="stat-bar success" id="stat-place-bar" style="width:0%"></div>
+            </div>
+            <div class="stat-sub" id="stat-place-sub">데이터 없음</div>
+          </div>
+
+          <!-- 진행률 -->
+          <div class="stat-item">
+            <div class="stat-row">
+              <span class="stat-label">🔄 현재 진행률</span>
+              <span class="stat-value progress-val" id="stat-prog-val">—</span>
+            </div>
+            <div class="stat-bar-wrap">
+              <div class="stat-bar progress-bar" id="stat-prog-bar" style="width:0%"></div>
+            </div>
+            <div class="stat-sub" id="stat-prog-sub">대기 중</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Inventory (DB inventory 테이블과 실시간 연동) -->
+      <div class="stats-title" style="margin-top:16px;">📦 블럭 재고</div>
+      <div class="inv-grid" id="inv-grid">
+        <div class="inv-cell" id="inv-red_2x2">
+          <div class="inv-chip"><span class="inv-dot" style="color:#ff4444;background:#ff4444"></span>빨강</div>
+          <div class="inv-shape">2×2</div>
+          <div class="inv-count" id="inv-val-red_2x2">0</div>
+        </div>
+        <div class="inv-cell" id="inv-blue_2x2">
+          <div class="inv-chip"><span class="inv-dot" style="color:#4488ff;background:#4488ff"></span>파랑</div>
+          <div class="inv-shape">2×2</div>
+          <div class="inv-count" id="inv-val-blue_2x2">0</div>
+        </div>
+        <div class="inv-cell" id="inv-yellow_2x2">
+          <div class="inv-chip"><span class="inv-dot" style="color:#ffdd00;background:#ffdd00"></span>노랑</div>
+          <div class="inv-shape">2×2</div>
+          <div class="inv-count" id="inv-val-yellow_2x2">0</div>
+        </div>
+        <div class="inv-cell" id="inv-red_2x3">
+          <div class="inv-chip"><span class="inv-dot" style="color:#ff4444;background:#ff4444"></span>빨강</div>
+          <div class="inv-shape">2×3</div>
+          <div class="inv-count" id="inv-val-red_2x3">0</div>
+        </div>
+        <div class="inv-cell" id="inv-blue_2x3">
+          <div class="inv-chip"><span class="inv-dot" style="color:#4488ff;background:#4488ff"></span>파랑</div>
+          <div class="inv-shape">2×3</div>
+          <div class="inv-count" id="inv-val-blue_2x3">0</div>
+        </div>
+        <div class="inv-cell" id="inv-yellow_2x3">
+          <div class="inv-chip"><span class="inv-dot" style="color:#ffdd00;background:#ffdd00"></span>노랑</div>
+          <div class="inv-shape">2×3</div>
+          <div class="inv-count" id="inv-val-yellow_2x3">0</div>
+        </div>
+      </div>
+      <div class="inv-total-row">
+        <span class="inv-total-label">총 블럭</span>
+        <span class="inv-total-val" id="inv-total">0</span>
+      </div>
+
+      <!-- Action Log -->
+      <div class="stats-title" style="margin-top:16px;">📋 시스템 로그</div>
+      <div class="log-panel" id="log-panel" style="margin-top:8px;">
+        <div class="log-entry info"><span>[INFO]</span> 시스템 초기화 완료</div>
+        <div class="log-entry"><span>[SYS ]</span> 로봇 연결 대기 중...</div>
+      </div>
+
+    </div>
+  </aside>
+
+</main>
+
+<script>
+// ── Init joint cards ──────────────────────────────────────────
+const joints = ['j1','j2','j3','j4','j5','j6'];
+const jpanel = document.getElementById('joint-panel');
+joints.forEach(j => {
+  jpanel.innerHTML += `
+  <div class="joint-card" id="card-${j}">
+    <div class="joint-label">${j.toUpperCase()} — Joint ${j[1]}</div>
+    <div class="joint-value-row">
+      <span class="joint-value" id="val-${j}">0.00</span>
+      <span class="joint-unit">°</span>
+    </div>
+    <div class="joint-bar-wrap">
+      <div class="joint-bar" id="bar-${j}" style="width:50%"></div>
+    </div>
+  </div>`;
+});
+
+// ── Init TCP cards ────────────────────────────────────────────
+const tcpTrans = ['x','y','z'];
+const tcpRot   = ['rx','ry','rz'];
+const tcpTransEl = document.getElementById('tcp-trans');
+const tcpRotEl   = document.getElementById('tcp-rot');
+tcpTrans.forEach(k => {
+  tcpTransEl.innerHTML += `
+  <div class="tcp-card">
+    <div class="tcp-label">${k.toUpperCase()}</div>
+    <div class="tcp-value" id="tcp-${k}">0.00<span class="tcp-unit"> mm</span></div>
+  </div>`;
+});
+tcpRot.forEach(k => {
+  tcpRotEl.innerHTML += `
+  <div class="tcp-card">
+    <div class="tcp-label">${k.toUpperCase()}</div>
+    <div class="tcp-value" id="tcp-${k}">0.00<span class="tcp-unit"> °</span></div>
+  </div>`;
+});
+
+// ── Clock ─────────────────────────────────────────────────────
+function tickClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('ko-KR', {hour12:false});
+}
+setInterval(tickClock, 1000); tickClock();
+
+// ── Uptime ────────────────────────────────────────────────────
+let uptimeSec = 0;
+setInterval(() => {
+  uptimeSec++;
+  const m = String(Math.floor(uptimeSec/60)).padStart(2,'0');
+  const s = String(uptimeSec % 60).padStart(2,'0');
+  document.getElementById('uptime-val').textContent = `${m}:${s}`;
+}, 1000);
+
+// ── FPS / latency (simulated) ─────────────────────────────────
+setInterval(() => {
+  document.getElementById('fps-val').textContent = (28 + Math.floor(Math.random()*4)) + '';
+  document.getElementById('lat-val').textContent = (8  + Math.floor(Math.random()*10)) + 'ms';
+}, 1500);
+
+// ── Poll /api/state ───────────────────────────────────────────
+let lastStatus = '';
+async function pollState() {
+  try {
+    const res = await fetch('/api/state');
+    const d   = await res.json();
+
+    // joints
+    joints.forEach(j => {
+      const v = d.joints[j];
+      document.getElementById(`val-${j}`).textContent = v.toFixed(2);
+      // map -180..180 → 0..100%
+      const pct = ((v + 180) / 360 * 100).toFixed(1);
+      document.getElementById(`bar-${j}`).style.width = pct + '%';
+    });
+
+    // tcp
+    [...tcpTrans, ...tcpRot].forEach(k => {
+      const el = document.getElementById(`tcp-${k}`);
+      const v  = d.tcp[k];
+      const unit = tcpTrans.includes(k) ? ' mm' : ' °';
+      el.innerHTML = `${v.toFixed(2)}<span class="tcp-unit">${unit}</span>`;
+    });
+
+    // status badge
+    if (d.status !== lastStatus) {
+      lastStatus = d.status;
+      const badge = document.getElementById('status-badge');
+      badge.textContent = d.status;
+      const busy = d.status.includes('중…') || d.status.includes('수행');
+      badge.classList.toggle('busy', busy);
+    }
+
+    // safety mode 동기화
+    if (typeof d.safety_mode !== 'undefined' && d.safety_mode !== safetyOn) {
+      safetyOn = d.safety_mode;
+      updateSafetyUI(safetyOn);
+    }
+
+    // 하드웨어 상태 코드 업데이트
+    if (typeof d.robot_hw_state !== 'undefined') {
+      updateHwStateUI(d.robot_hw_state);
+    }
+
+    // 자동화 실행 중 버튼 잠금
+    if (typeof d.automation_running !== 'undefined') {
+      updateAutomationLock(d.automation_running);
+    }
+  } catch(e) { console.warn('poll error', e); }
+}
+setInterval(pollState, 100);
+pollState();
+
+// ── 색상 → CSS 색상 매핑 ──────────────────────────────────────
+const COLOR_MAP = {
+  red: '#ff4444', blue: '#4488ff', yellow: '#ffdd00',
+  green: '#44cc44', white: '#cccccc', black: '#888888',
+  orange: '#ff8800', purple: '#aa44ff',
+};
+function colorDot(colorName) {
+  const c = COLOR_MAP[colorName] || '#aaaaaa';
+  return `<span class="det-color-dot" style="background:${c}"></span>`;
+}
+
+// ── YOLO 토글 ─────────────────────────────────────────────────
+let yoloOn = false;
+
+async function toggleYolo() {
+  try {
+    const res  = await fetch('/api/yolo/toggle', { method: 'POST' });
+    const data = await res.json();
+    yoloOn = data.yolo_on;
+    const btn = document.getElementById('btn-yolo');
+    btn.textContent = yoloOn ? 'YOLO ON' : 'YOLO OFF';
+    btn.classList.toggle('yolo-off', !yoloOn);
+    addLog(`YOLO 탐지 ${yoloOn ? '켜짐' : '꺼짐'}`, 'info');
+    if (!yoloOn) {
+      currentDetections = [];
+      renderDetList();
+    }
+  } catch(e) { addLog(`YOLO 토글 오류: ${e.message}`, 'warn'); }
+}
+
+// ── 탐지 목록 폴링 ────────────────────────────────────────────
+let currentDetections = [];
+
+async function pollDetections() {
+  if (!yoloOn) return;
+  try {
+    const res  = await fetch('/api/detections');
+    const data = await res.json();
+    currentDetections = data.detections || [];
+    renderDetList();
+    updateMatchBadge();
+  } catch(e) { /* 무시 */ }
+}
+setInterval(pollDetections, 400);
+
+function getFilters() {
+  return {
+    color: document.getElementById('filter-color').value,
+    shape: document.getElementById('filter-shape').value,
+  };
+}
+
+function isMatch(det) {
+  const f = getFilters();
+  return (f.color === 'all' || det.color === f.color)
+      && (f.shape === 'all' || det.shape === f.shape);
+}
+
+function renderDetList() {
+  const list = document.getElementById('det-list');
+  if (currentDetections.length === 0) {
+    list.innerHTML = '<div class="det-empty">탐지된 블럭이 없습니다</div>';
+    return;
+  }
+  list.innerHTML = currentDetections.map(d => {
+    const match = isMatch(d);
+    return `
+      <div class="det-item${match ? ' match' : ''}">
+        ${colorDot(d.color)}
+        <span>${d.color}</span>
+        <span class="det-shape">${d.shape}</span>
+        <span class="det-conf">${d.conf.toFixed(1)}%</span>
+        ${match ? '<span style="margin-left:4px;font-size:.65rem;color:var(--accent2)">▶</span>' : ''}
+      </div>`;
+  }).join('');
+}
+
+function updateMatchBadge() {
+  const count = currentDetections.filter(isMatch).length;
+  const badge = document.getElementById('match-badge');
+  badge.textContent = `조건에 맞는 블럭: ${count}개${count > 0 ? ' (랜덤 집기)' : ''}`;
+  badge.classList.toggle('zero', count === 0);
+  renderDetList();
+}
+
+// ── Action handler ────────────────────────────────────────────
+let actionRunning = false;
+
+function _setAllActionBtnsDisabled(disabled) {
+  ['btn-pick', 'btn-place', 'btn-block-pick', 'btn-home'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
+async function doAction(type) {
+  if (actionRunning || automationRunning) return;
+  actionRunning = true;
+
+  _setAllActionBtnsDisabled(true);
+
+  const progId = type === 'pick' ? 'prog-pick' : 'prog-place';
+  const prog   = document.getElementById(progId);
+
+  prog.style.transition = 'none';
+  prog.style.width = '0%';
+  requestAnimationFrame(() => {
+    prog.style.transition = 'width 3s linear';
+    prog.style.width = '100%';
+  });
+
+  addLog(`블럭 집기 시작`, 'info');
+
+  // 필터 조건을 body에 포함
+  const f = getFilters();
+  const body = type === 'pick'
+    ? JSON.stringify({ color: f.color, shape: f.shape })
+    : '{}';
+
+  try {
+    const res  = await fetch(`/api/action/${type}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body,
+    });
+    const data = await res.json();
+    if (data.ok) {
+      addLog(data.message, 'info');
+    } else {
+      addLog(data.message, 'warn');
+      prog.style.transition = 'none';
+      prog.style.width = '0%';
+      _setAllActionBtnsDisabled(false);
+      actionRunning = false;
+      return;
+    }
+  } catch(e) {
+    addLog(`오류: ${e.message}`, 'warn');
+  }
+
+  setTimeout(() => {
+    prog.style.transition = 'none';
+    prog.style.width = '0%';
+    _setAllActionBtnsDisabled(false);
+    actionRunning = false;
+  }, 3200);
+}
+
+async function doBlockPick() {
+  if (actionRunning || automationRunning) return;
+
+  const row    = parseInt(document.getElementById('param-row').value);
+  const col    = parseInt(document.getElementById('param-col').value);
+  const width  = parseInt(document.getElementById('param-width').value);
+  const height = parseInt(document.getElementById('param-height').value);
+
+  if ([row, col, width, height].some(v => isNaN(v) || v < 0)) {
+    addLog('row/col/width/height 값을 확인해주세요.', 'warn');
+    return;
+  }
+
+  actionRunning = true;
+  _setAllActionBtnsDisabled(true);
+
+  const prog = document.getElementById('prog-block-pick');
+  prog.style.transition = 'none';
+  prog.style.width = '0%';
+  requestAnimationFrame(() => {
+    prog.style.transition = 'width 5s linear';
+    prog.style.width = '100%';
+  });
+
+  addLog(`블럭놓기 시작 — row=${row} col=${col} ${width}x${height}`, 'info');
+
+  try {
+    const res  = await fetch('/api/action/place_one', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ row, col, width, height }),
+    });
+    const data = await res.json();
+    addLog(data.message || '블럭놓기 요청 완료', data.ok ? 'info' : 'warn');
+  } catch(e) {
+    addLog(`오류: ${e.message}`, 'warn');
+  }
+
+  setTimeout(() => {
+    prog.style.transition = 'none';
+    prog.style.width = '0%';
+    _setAllActionBtnsDisabled(false);
+    actionRunning = false;
+  }, 5200);
+}
+
+// ── Automation Lock ──────────────────────────────────────────
+let automationRunning = false;
+const ACTION_BTN_IDS = ['btn-pick', 'btn-block-pick', 'btn-home'];
+
+function updateAutomationLock(running) {
+  if (running === automationRunning) return;
+  automationRunning = running;
+  ACTION_BTN_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = running;
+    el.title = running ? '자동화 실행 중에는 수동 조작이 불가능합니다' : '';
+  });
+  if (running) {
+    addLog('자동화 실행 중 — 수동 버튼 잠금', 'warn');
+  } else {
+    addLog('자동화 종료 — 수동 버튼 활성화', 'info');
+  }
+}
+
+// ── Cancel ────────────────────────────────────────────────────
+async function doCancel() {
+  try {
+    const res  = await fetch('/api/action/stop', { method: 'POST' });
+    const data = await res.json();
+    addLog(data.message || '취소 요청 완료', data.ok ? 'warn' : 'warn');
+  } catch(e) {
+    addLog(`취소 오류: ${e.message}`, 'warn');
+  }
+  // 진행 중인 버튼 프로그레스바 초기화
+  ['prog-pick', 'prog-block-pick', 'prog-home'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.transition = 'none'; el.style.width = '0%'; }
+  });
+  _setAllActionBtnsDisabled(false);
+  actionRunning = false;
+}
+
+// ── Go Home ───────────────────────────────────────────────────
+async function doGoHome() {
+  if (actionRunning || automationRunning) return;
+  actionRunning = true;
+  _setAllActionBtnsDisabled(true);
+
+  const prog = document.getElementById('prog-home');
+  prog.style.transition = 'none';
+  prog.style.width = '0%';
+  requestAnimationFrame(() => {
+    prog.style.transition = 'width 4s linear';
+    prog.style.width = '100%';
+  });
+
+  addLog('홈 위치로 이동 시작', 'info');
+  try {
+    const res  = await fetch('/api/action/go_home', { method: 'POST' });
+    const data = await res.json();
+    addLog(data.message || '홈 이동 요청 완료', data.ok ? 'info' : 'warn');
+  } catch(e) {
+    addLog(`오류: ${e.message}`, 'warn');
+  }
+
+  setTimeout(() => {
+    prog.style.transition = 'none';
+    prog.style.width = '0%';
+    _setAllActionBtnsDisabled(false);
+    actionRunning = false;
+  }, 4200);
+}
+
+// ── Stats 폴링 ────────────────────────────────────────────────
+async function pollStats() {
+  try {
+    const res = await fetch('/api/stats');
+    const d   = await res.json();
+    if (!d.ok) return;
+
+    // 집기 성공률
+    document.getElementById('stat-pick-val').textContent  = d.pick_success_rate + '%';
+    document.getElementById('stat-pick-bar').style.width  = d.pick_success_rate + '%';
+    document.getElementById('stat-pick-sub').textContent  =
+      d.pick_success_rate >= 80 ? '우수' : d.pick_success_rate >= 50 ? '보통' : '저조';
+
+    // 두기 성공률
+    document.getElementById('stat-place-val').textContent = d.place_success_rate + '%';
+    document.getElementById('stat-place-bar').style.width = d.place_success_rate + '%';
+    document.getElementById('stat-place-sub').textContent =
+      d.place_success_rate >= 80 ? '우수' : d.place_success_rate >= 50 ? '보통' : '저조';
+
+    // 진행률
+    document.getElementById('stat-prog-val').textContent  = d.progress + '%';
+    document.getElementById('stat-prog-bar').style.width  = d.progress + '%';
+    document.getElementById('stat-prog-sub').textContent  =
+      d.progress_total > 0
+        ? `${d.progress_done} / ${d.progress_total} 스텝 완료`
+        : '실행 중인 작업 없음';
+  } catch(e) { /* 무시 */ }
+}
+setInterval(pollStats, 1500);
+pollStats();
+
+// ── Inventory 폴링 (DB inventory 테이블과 실시간 연동) ─────────
+const INV_KEYS = ['red_2x2','blue_2x2','yellow_2x2','red_2x3','blue_2x3','yellow_2x3'];
+const _invPrev = {};
+async function pollInventory() {
+  try {
+    const res = await fetch('/api/inventory');
+    const d   = await res.json();
+    if (!d.ok) return;
+    INV_KEYS.forEach(k => {
+      const el = document.getElementById('inv-val-' + k);
+      if (!el) return;
+      const v = d[k] ?? 0;
+      if (_invPrev[k] !== v) {
+        el.textContent = v;
+        // 값이 바뀐 셀에 잠깐 강조 효과 (변동 시각화)
+        const cell = document.getElementById('inv-' + k);
+        if (cell && _invPrev[k] !== undefined) {
+          cell.classList.add('flash');
+          setTimeout(() => cell.classList.remove('flash'), 600);
+        }
+        _invPrev[k] = v;
+      }
+    });
+    document.getElementById('inv-total').textContent = d.total_blocks ?? 0;
+  } catch(e) { /* 무시 */ }
+}
+setInterval(pollInventory, 1000);
+pollInventory();
+
+// ── Safety Mode 토글 ─────────────────────────────────────────
+let safetyOn = false;
+
+async function toggleSafety() {
+  try {
+    const res  = await fetch('/api/safety/toggle', { method: 'POST' });
+    const data = await res.json();
+    safetyOn = data.safety_mode;
+    updateSafetyUI(safetyOn);
+    addLog(`안전 모드 ${safetyOn ? 'ON — 로봇 제한 동작' : 'OFF — 정상 연결'}`, safetyOn ? 'warn' : 'info');
+  } catch(e) { addLog(`안전 모드 토글 오류: ${e.message}`, 'warn'); }
+}
+
+function updateSafetyUI(on) {
+  const btn       = document.getElementById('btn-safety');
+  const indicator = document.getElementById('safety-indicator');
+  const label     = document.getElementById('safety-mode-label');
+  const desc      = document.getElementById('safety-mode-desc');
+  const sub       = document.getElementById('safety-mode-sub');
+
+  btn.textContent = on ? 'SAFE ON' : 'NORMAL';
+  btn.classList.toggle('safety-on', on);
+  indicator.className = 'safety-indicator ' + (on ? 'safe-on' : 'normal');
+  label.textContent   = on ? '안전 모드 활성화' : '정상 연결';
+  desc.textContent    = on ? '로봇 속도/범위 제한 중' : '로봇이 정상 동작 중입니다';
+  sub.textContent     = on ? 'SAFE' : 'NORMAL';
+}
+
+// ── 하드웨어 상태 표시 ─────────────────────────────────────────
+const HW_STATE_MAP = {
+  0:  { label: 'INITIALIZING',   color: '#5a5a7a', glow: 'none',                        btn: false },
+  1:  { label: 'STANDBY',        color: '#00cc7a', glow: '0 0 8px rgba(0,204,122,0.8)', btn: false },
+  2:  { label: 'MOVING',         color: '#006DB7', glow: '0 0 8px rgba(0,109,183,0.8)', btn: false },
+  3:  { label: 'SAFE OFF',       color: '#e3000b', glow: '0 0 8px rgba(227,0,11,0.8)',  btn: true  },
+  4:  { label: 'TEACHING',       color: '#5a5a7a', glow: 'none',                        btn: false },
+  5:  { label: 'SAFE STOP',      color: '#ffc800', glow: '0 0 8px rgba(255,200,0,0.9)', btn: true  },
+  6:  { label: 'EMERGENCY STOP', color: '#e3000b', glow: '0 0 8px rgba(227,0,11,0.8)',  btn: false },
+  8:  { label: 'RECOVERY',       color: '#ffc800', glow: '0 0 8px rgba(255,200,0,0.6)', btn: false },
+  15: { label: 'NOT READY',      color: '#5a5a7a', glow: 'none',                        btn: false },
+};
+
+let _lastHwState = -1;
+
+function updateHwStateUI(code) {
+  if (code === _lastHwState) return;
+  _lastHwState = code;
+
+  const led   = document.getElementById('hw-state-led');
+  const label = document.getElementById('hw-state-label');
+  const btn   = document.getElementById('btn-recovery');
+
+  const info = HW_STATE_MAP[code] || { label: `UNKNOWN (${code})`, color: '#5a5a7a', glow: 'none', btn: false };
+
+  led.style.background  = info.color;
+  led.style.boxShadow   = info.glow;
+  label.textContent     = info.label;
+  label.style.color     = info.color;
+  btn.style.display     = info.btn ? 'block' : 'none';
+
+  if (code === 5) addLog('⚠ 안전 정지(SAFE STOP) 감지 — 복구 버튼을 눌러주세요', 'warn');
+  if (code === 3) addLog('⚠ 서보 꺼짐(SAFE OFF) 감지 — 복구 버튼을 눌러주세요', 'warn');
+}
+
+async function doRecovery() {
+  addLog('🔄 복구 명령 전송 중...', 'info');
+  try {
+    const res  = await fetch('/api/action/recovery', { method: 'POST' });
+    const data = await res.json();
+    addLog(data.ok ? '복구 명령 전송 완료' : `복구 실패: ${data.message}`, data.ok ? 'info' : 'warn');
+  } catch(e) { addLog(`복구 오류: ${e.message}`, 'warn'); }
+}
+
+// ── Log helper ────────────────────────────────────────────────
+function addLog(msg, cls='') {
+  const panel = document.getElementById('log-panel');
+  const time  = new Date().toLocaleTimeString('ko-KR',{hour12:false});
+  const tag   = cls === 'warn' ? '[WARN]' : cls === 'info' ? '[INFO]' : '[LOG ]';
+  const div   = document.createElement('div');
+  div.className = `log-entry ${cls}`;
+  div.innerHTML = `<span>${tag}</span> ${time} — ${msg}`;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+</script>
+</body>
+</html>

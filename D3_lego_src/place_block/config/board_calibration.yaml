@@ -1,0 +1,70 @@
+grid:
+  rows: 24
+  cols: 24
+
+  # 실제 변환은 아래 3점 측정 좌표를 23칸으로 나눠서 사용한다.
+  # 이 값은 참고 기록용이다.
+  cell_pitch_mm: 17.0
+
+  # 좌표를 셀 중심 기준으로 찍었기 때문에 cell_center 사용
+  origin_mode: "cell_center"
+
+calibration:
+  mode: "three_point_center"
+
+  points:
+    top_left:
+      name: "cell_0_0_center"
+      row: 0
+      col: 0
+      posx: [307.653, 63.130, 244.585, 76.419, -177.109, 70.853]
+
+    bottom_left:
+      name: "cell_23_0_center"
+      row: 23
+      col: 0
+      posx: [307.191, -303.329, 243.316, 78.728, -177.172, 139.272]
+      posj: [-44.846, 14.342, 102.679, -2.708, 61.444, 17.019]
+
+    bottom_right:
+      name: "cell_23_23_center"
+      row: 23
+      col: 23
+      posx: [667.92, -306.761, 242.098, 116.802, -178.016, 153.117]
+      posj: [-24.952, 63.292, 19.685, -1.322, 95.463, 11.232]
+
+safe:
+  start_posj: [11.423, -0.544, 119.598, -2.959, 62.703, 7.329]
+
+motion:
+  velocity: 80
+  acceleration: 70
+
+  # 블럭 위치 바로 위 접근 높이
+  approach_z_mm: 80.0
+
+  # 블럭 위치에서 다시 올라올 높이
+  lift_z_mm: 80.0
+
+  # 실제 집는 높이 보정값
+  # 처음에는 0.0으로 두고, 너무 높거나 낮으면 -값 또는 +값으로 보정
+  pick_z_offset_mm: 0.0
+
+block_orientation:
+  # width=2, height=3 블럭
+  yaw_2x3_deg: 0.0
+
+  # width=3, height=2 블럭
+  yaw_3x2_deg: 90.0
+
+  # width=2, height=2 블럭
+  yaw_2x2_deg: 90.0
+
+gripper:
+  name: "rg2"
+  toolchanger_ip: "192.168.1.1"
+  toolchanger_port: "502"
+
+# 처음에는 반드시 true
+# true면 실제 로봇 이동 없이 좌표만 출력
+dry_run: false

@@ -1,0 +1,155 @@
+{
+  "source": "/home/rokey/Downloads/IMG_8875.jpg",
+  "brick_count": 17,
+  "coverage_pct": 16,
+  "brick_types": {
+    "2x2": 4,
+    "2x3": 9,
+    "3x2": 4
+  },
+  "dropped_cells": 25,
+  "colors": {
+    "R": 0,
+    "B": 17,
+    "Y": 0
+  },
+  "detected_line_color": "B",
+  "bricks": [
+    {
+      "row": 2,
+      "col": 13,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 3,
+      "col": 11,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 5,
+      "col": 8,
+      "width": 3,
+      "height": 2,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 5,
+      "col": 14,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 7,
+      "col": 5,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 8,
+      "col": 3,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 2
+    },
+    {
+      "row": 8,
+      "col": 14,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 2
+    },
+    {
+      "row": 9,
+      "col": 7,
+      "width": 3,
+      "height": 2,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 9,
+      "col": 10,
+      "width": 3,
+      "height": 2,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 9,
+      "col": 21,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 10,
+      "col": 1,
+      "width": 2,
+      "height": 2,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 10,
+      "col": 5,
+      "width": 2,
+      "height": 2,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 10,
+      "col": 16,
+      "width": 3,
+      "height": 2,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 10,
+      "col": 19,
+      "width": 2,
+      "height": 2,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 11,
+      "col": 14,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 1
+    },
+    {
+      "row": 14,
+      "col": 14,
+      "width": 2,
+      "height": 2,
+      "color": "B",
+      "z_layers": 2
+    },
+    {
+      "row": 16,
+      "col": 15,
+      "width": 2,
+      "height": 3,
+      "color": "B",
+      "z_layers": 2
+    }
+  ]
+}

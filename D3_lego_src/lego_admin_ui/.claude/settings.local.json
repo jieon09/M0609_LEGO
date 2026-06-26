@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -rn \"RobotState\\\\|'state'\\\\|\\\\\"state\\\\\"\\\\|msg/state\" /home/shin/cobot_ws/src/doosan-robot2/ 2>/dev/null | grep -v \".pyc\\\\|Binary\\\\|#\\\\|\\\\.msg:\" | grep \"create_pub\\\\|create_sub\\\\|Publisher\\\\|Subscriber\\\\|publisher\\\\|subscriber\" | head -20)",
+      "Read(//home/shin/cobot_ws/src/doosan-robot2/**)",
+      "Bash(xargs cat)",
+      "Read(//home/shin/cobot_ws/src/**)",
+      "Read(//home/shin/cobot_ws/src/lego_customer_ui/**)",
+      "Bash(find /home/shin/cobot_ws/src/lego_customer_ui -type f | head -30 2>/dev/null)",
+      "Bash(ls /dev/video* 2>/dev/null)",
+      "Read(//dev/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s --max-time 3 http://localhost:5000/video_feed -o /dev/null -w \"%{http_code}\")",
+      "Bash(ls /proc/806181/fd 2>/dev/null | wc -l && cat /proc/806181/status 2>/dev/null | grep -E \"State|VmRSS\")",
+      "Read(//proc/806181/**)",
+      "Bash(fuser /dev/video6)",
+      "Bash(timeout 10 python3 -c ' *)",
+      "Bash(curl -s --max-time 2 http://localhost:19000/)",
+      "Bash(timeout 8 python3 app.py)",
+      "Bash(kill 809386)",
+      "Bash(mv /home/shin/cobot_ws/src/lego_admin_ui/robot_activity/block_picker /home/shin/cobot_ws/src/block_picker)",
+      "Bash(mv /home/shin/cobot_ws/src/lego_admin_ui/robot_activity/pick_and_place_text /home/shin/cobot_ws/src/pick_and_place_text)",
+      "Bash(find /home/shin/cobot_ws/src/pick_and_place_text -type f | sort && echo \"---\" && find /home/shin/cobot_ws/install/pick_and_place_text -type f | sort 2>/dev/null | head -30)",
+      "Read(//home/shin/cobot_ws/install/pick_and_place_text/**)",
+      "Bash(ls -la /home/shin/cobot_ws/install/block_picker/lib/python3.10/site-packages/block_picker/block_pick_node.py && echo \"---\" && ls -la /home/shin/cobot_ws/install/pick_and_place_text/lib/python3.10/site-packages/pick_and_place_text/)",
+      "Read(//home/shin/cobot_ws/install/block_picker/lib/python3.10/site-packages/block_picker/**)",
+      "Bash(cp /home/shin/cobot_ws/src/pick_and_place_text/pick_and_place_text/onrobot.py \\\\ *)",
+      "Bash(cp /home/shin/cobot_ws/src/block_picker/block_picker/block_pick_node.py \\\\ *)",
+      "Bash(curl -s --max-time 3 http://localhost:5000/video_feed -I)",
+      "Bash(timeout 5 curl -s http://localhost:5000/video_feed)",
+      "Bash(xxd)",
+      "Bash(timeout 3 curl -s http://localhost:5000/video_feed)",
+      "Bash(curl -s --max-time 3 http://localhost:5000/video_feed)",
+      "Read(//tmp/**)",
+      "Bash(xxd /tmp/video_test.bin)",
+      "Bash(python3 -m py_compile app.py)",
+      "Bash(python3 -m pyflakes app.py)",
+      "Bash(find /home/shin/cobot_ws/src/place_block -name \"*.py\" | sort && echo \"---\" && ls /home/shin/cobot_ws/install/place_block/lib/python3.10/site-packages/place_block/)",
+      "Read(//home/shin/cobot_ws/install/place_block/lib/python3.10/site-packages/place_block/**)",
+      "Read(//home/shin/cobot_ws/**)",
+      "Bash(colcon build *)"
+    ],
+    "additionalDirectories": [
+      "/home/shin/cobot_ws/src/pick_and_place_text/pick_and_place_text",
+      "/home/shin/cobot_ws/src/block_picker/block_picker"
+    ]
+  }
+}

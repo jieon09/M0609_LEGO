@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PGPASSWORD=1234 psql -U postgres -d lego_robot -h localhost -c \"SELECT COUNT\\(*\\) AS blueprints FROM blueprints; SELECT COUNT\\(*\\) AS tasks FROM tasks; SELECT COUNT\\(*\\) AS robot_logs FROM robot_logs;\")"
+    ]
+  }
+}
